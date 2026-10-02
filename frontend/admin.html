@@ -104,8 +104,10 @@
 
 <body>
     <script>
-        // 🔒 Verificar login antes de mostrar admin
-        if (localStorage.getItem("loggedIn") !== "true") {
+        // 🔒 Verificar login antes de mostrar admin.
+        // El backend también exige este token en cada escritura (ver /api/codigos);
+        // esto sólo evita el parpadeo de la pantalla para quien no tiene sesión.
+        if (!localStorage.getItem("authToken")) {
             window.location.href = "login.html";
         }
     </script>
@@ -274,6 +276,32 @@
         let codigosGlobal = [];
         let seleccionados = new Set();
 
+        // Evita que un nombre/docente/sede con HTML o JS se ejecute al mostrarlo.
+        function escapeHtml(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        // Cabeceras con el token de sesión, para las escrituras que el backend protege.
+        function authHeaders() {
+            return {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + (localStorage.getItem("authToken") || "")
+            };
+        }
+
+        // Si el backend rechaza el token (vencido o inválido), vuelve a pedir login.
+        function manejarRespuestaAuth(res) {
+            if (res.status === 401) {
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("loggedIn");
+                window.location.href = "login.html";
+                return true;
+            }
+            return false;
+        }
+
         // 🔹 Cargar datos
         async function cargarCodigos() {
             const res = await fetch("/api/codigos");
@@ -324,11 +352,11 @@
                 tr.innerHTML = `
                     <td><input type="checkbox" class="select-codigo" data-id="${codigo.id}" ${seleccionados.has(codigo.id) ? 'checked' : ''}></td>
                     <td>${codigo.id}</td>
-                    <td>${codigo.Nombre}</td>
-                    <td>${codigo.Codigo}</td>
-                    <td>${codigo.Docente || ''}</td>
-                    <td>${codigo.Encargado || ''}</td>
-                    <td>${codigo.Sede || '<span class="text-muted">— sin sede —</span>'}</td>
+                    <td>${escapeHtml(codigo.Nombre)}</td>
+                    <td>${escapeHtml(codigo.Codigo)}</td>
+                    <td>${escapeHtml(codigo.Docente || '')}</td>
+                    <td>${escapeHtml(codigo.Encargado || '')}</td>
+                    <td>${codigo.Sede ? escapeHtml(codigo.Sede) : '<span class="text-muted">— sin sede —</span>'}</td>
                     <td>
                         <button class="btn btn-warning btn-sm mr-1" onclick="abrirModalEditar(${codigo.id})">✏️ Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="eliminarCodigo(${codigo.id})">🗑️ Eliminar</button>
@@ -386,10 +414,11 @@
 
             const res = await fetch("/api/codigos", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
 
+            if (manejarRespuestaAuth(res)) return;
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 alert(err.error || "No se pudo guardar el registro.");
@@ -431,10 +460,11 @@
 
             const res = await fetch(`/api/codigos/${data.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
 
+            if (manejarRespuestaAuth(res)) return;
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 alert(err.error || "No se pudo actualizar el registro.");
@@ -448,7 +478,8 @@
         // 🔹 Eliminar un código
         async function eliminarCodigo(id) {
             if (!confirm("¿Seguro que deseas eliminar este registro?")) return;
-            await fetch(`/api/codigos/${id}`, { method: "DELETE" });
+            const res = await fetch(`/api/codigos/${id}`, { method: "DELETE", headers: authHeaders() });
+            if (manejarRespuestaAuth(res)) return;
             cargarCodigos();
         }
 
@@ -502,10 +533,11 @@
 
                 const res = await fetch(`/api/codigos/${id}`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: authHeaders(),
                     body: JSON.stringify(actualizado)
                 });
 
+                if (manejarRespuestaAuth(res)) return;
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     errores.push(`${codigoActual.Nombre}: ${err.error || res.status}`);

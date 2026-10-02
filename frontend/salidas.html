@@ -561,7 +561,7 @@
                     <ul class="space-y-1.5 text-xs">
                         <li><a href="index.html"
                                 class="text-gray-300 hover:text-corporate-skyblue transition-colors">Inicio</a></li>
-                        <li><a href="grados.html"
+                        <li><a href="https://sistemas-gradosplay.onrender.com/" target="_blank"
                                 class="text-gray-300 hover:text-corporate-skyblue transition-colors">Grados</a></li>
                         <li><a href="salidas.html"
                                 class="text-gray-300 hover:text-corporate-skyblue transition-colors">Salidas</a></li>
@@ -588,11 +588,17 @@
         /* ──────────────────────────────────────────
            CONFIG
         ────────────────────────────────────────── */
-        const SHEET_ID = '1Sc1HFGGmsnjIT7tW8umr5TT0DbmuVMh3NWJvRYUSfYE';
-        const SHEET_GID = '735221275';
-        const API_KEY = 'AIzaSyAIi6RJGCHX8EK_yPpHwJyE_UAh8AMdfoo';
-        // Para consultar Supabase (codigos de estudiantes)
+        // Google Sheets y Supabase se consultan siempre a través del backend
+        // (antes las credenciales vivían hardcodeadas aquí mismo).
         const API_BASE = (window.location.port === '5500') ? 'http://localhost:3000' : '';
+
+        // Evita HTML/JS en campos que vienen del formulario público de Google
+        // (cualquiera puede enviar ese formulario) o de la base de estudiantes.
+        function escapeHtml(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
 
         /* ──────────────────────────────────────────
            COLUMN MAP — estructura actualizada del formulario
@@ -734,41 +740,21 @@
         }
 
         /* ──────────────────────────────────────────
-           GOOGLE SHEETS — DETECTAR PESTAÑA
-        ────────────────────────────────────────── */
-        async function getSheetTabName() {
-            const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`);
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                if (res.status === 403) throw new Error('Hoja privada: Compartir → "Cualquiera con el enlace" → Lector.');
-                throw new Error(err?.error?.message || `HTTP ${res.status}`);
-            }
-            const meta = await res.json();
-            const sheet = meta.sheets.find(s => String(s.properties.sheetId) === SHEET_GID);
-            if (!sheet) throw new Error(`No existe pestaña con gid=${SHEET_GID}`);
-            return sheet.properties.title;
-        }
-
-        /* ──────────────────────────────────────────
-           CARGAR DATOS SHEETS
+           CARGAR DATOS — ahora vía backend (/api/salidas),
+           que es quien tiene la API key de Google Sheets.
         ────────────────────────────────────────── */
         async function cargarDatos() {
             setLoading(true);
             hideError();
             try {
-                const tab = await getSheetTabName();
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tab)}?key=${API_KEY}`;
-                const res = await fetch(url);
+                const res = await fetch(`${API_BASE}/api/salidas`);
                 if (!res.ok) {
                     const b = await res.json().catch(() => ({}));
-                    const m = b?.error?.message || `HTTP ${res.status}`;
-                    if (res.status === 403) throw new Error('Acceso denegado (403). Hoja debe ser pública.');
-                    throw new Error(m);
+                    throw new Error(b?.error || `HTTP ${res.status}`);
                 }
                 const json = await res.json();
-                const values = json.values || [];
-                headerRow = values[0] || [];
-                allRows = values.slice(1) || [];
+                headerRow = json.headerRow || [];
+                allRows = json.rows || [];
 
                 poblarSedes();
                 if (!modoTodos) aplicarFiltroSemana();
@@ -785,41 +771,15 @@
         }
 
         /* ──────────────────────────────────────────
-           CARGAR ESTUDIANTES DE SUPABASE
-           Intenta primero el proxy Express; si falla
-           consulta la API REST de Supabase directamente.
+           CARGAR ESTUDIANTES — siempre vía el backend,
+           que es el único que tiene la clave de Supabase.
         ────────────────────────────────────────── */
         async function cargarEstudiantesDB() {
-            // Intento 1: servidor Express (localhost:3000)
             try {
                 const res = await fetch(`${API_BASE}/api/codigos`, { signal: AbortSignal.timeout(3000) });
                 if (res.ok) {
                     estudiantesDB = await res.json();
                     console.log(`✅ Estudiantes desde Express: ${estudiantesDB.length}`);
-                    return;
-                }
-            } catch { /* servidor no disponible, intentamos Supabase directo */ }
-
-            // Intento 2: Supabase REST API directamente
-            try {
-                // Obtener credenciales desde el servidor o usar las conocidas
-                let sbUrl = '', sbKey = '';
-                try {
-                    const cfg = await fetch(`${API_BASE}/api/config`, { signal: AbortSignal.timeout(2000) });
-                    if (cfg.ok) { const d = await cfg.json(); sbUrl = d.supabaseUrl; sbKey = d.supabaseKey; }
-                } catch { }
-
-                // Fallback a valores hardcodeados si el servidor tampoco responde
-                if (!sbUrl) sbUrl = 'https://dmgwjnsxmawqtecbkgcf.supabase.co';
-                if (!sbKey) sbKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtZ3dqbnN4bWF3cXRlY2JrZ2NmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzM0MjY5NiwiZXhwIjoyMDcyOTE4Njk2fQ.uK7OAmqGCj0njTYrSxS_-nFRM0nr9Poea-i2huWmmQQ';
-
-                const res = await fetch(
-                    `${sbUrl}/rest/v1/Codigos?select=*&order=id.asc`,
-                    { headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}` } }
-                );
-                if (res.ok) {
-                    estudiantesDB = await res.json();
-                    console.log(`✅ Estudiantes desde Supabase REST: ${estudiantesDB.length}`);
                 }
             } catch (e) { console.warn('No se pudo cargar estudiantes:', e.message); }
         }
@@ -898,20 +858,20 @@
             <div class="flex items-start justify-between gap-2 mb-2">
                 <div class="flex items-center gap-2 min-w-0">
                     <span class="text-gray-400 text-xs font-mono w-5 flex-shrink-0">${idx + 1}</span>
-                    <span class="font-bold text-corporate-blue text-sm leading-tight truncate">${nombre}</span>
+                    <span class="font-bold text-corporate-blue text-sm leading-tight truncate">${escapeHtml(nombre)}</span>
                 </div>
-                <span class="badge badge-sede flex-shrink-0">${sede}</span>
+                <span class="badge badge-sede flex-shrink-0">${escapeHtml(sede)}</span>
             </div>
             <!-- Fila 2: tipo + jornada -->
             <div class="flex flex-wrap items-center gap-1.5 mb-2">
-                <span class="${getTipoClass(tipo)} text-xs">${tipo.length > 35 ? tipo.slice(0, 33) + '…' : tipo}</span>
-                ${jornada !== '—' ? `<span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">${jornada}</span>` : ''}
+                <span class="${getTipoClass(tipo)} text-xs">${escapeHtml(tipo.length > 35 ? tipo.slice(0, 33) + '…' : tipo)}</span>
+                ${jornada !== '—' ? `<span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">${escapeHtml(jornada)}</span>` : ''}
             </div>
             <!-- Fila 3: fecha + hora -->
             <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mb-3">
-                <span>🕐 ${fecha}</span>
-                ${hora !== '—' ? `<span>⏰ Retiro: ${hora}</span>` : ''}
-                ${recoge !== '—' ? `<span>👤 ${recoge}</span>` : ''}
+                <span>🕐 ${escapeHtml(fecha)}</span>
+                ${hora !== '—' ? `<span>⏰ Retiro: ${escapeHtml(hora)}</span>` : ''}
+                ${recoge !== '—' ? `<span>👤 ${escapeHtml(recoge)}</span>` : ''}
             </div>
             <!-- Botones -->
             <div class="flex gap-2 flex-wrap">
@@ -961,15 +921,15 @@
                 panel.innerHTML = `
             <p class="font-bold text-blue-700 mb-1">✅ Encontrado en el sistema</p>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                <div><span class="font-semibold text-gray-600">Nombre:</span> ${est.Nombre}</div>
-                <div><span class="font-semibold text-gray-600">Código:</span> <span class="font-mono text-corporate-blue font-bold">${est.Codigo}</span></div>
-                <div><span class="font-semibold text-gray-600">Docente:</span> ${est.Docente || '—'}</div>
-                <div><span class="font-semibold text-gray-600">Encargado:</span> ${est.Encargado || '—'}</div>
+                <div><span class="font-semibold text-gray-600">Nombre:</span> ${escapeHtml(est.Nombre)}</div>
+                <div><span class="font-semibold text-gray-600">Código:</span> <span class="font-mono text-corporate-blue font-bold">${escapeHtml(est.Codigo)}</span></div>
+                <div><span class="font-semibold text-gray-600">Docente:</span> ${escapeHtml(est.Docente || '—')}</div>
+                <div><span class="font-semibold text-gray-600">Encargado:</span> ${escapeHtml(est.Encargado || '—')}</div>
             </div>`;
             } else if (estudiantesDB.length === 0) {
                 panel.innerHTML = `<p class="text-orange-600">⚠️ Sin conexión al servidor. Abre la app desde <strong>localhost:3000</strong> para consultar el sistema.</p>`;
             } else {
-                panel.innerHTML = `<p class="text-gray-500">❌ No se encontró "<strong>${nombreFormulario}</strong>" en el sistema. Verifica el nombre en el formulario.</p>`;
+                panel.innerHTML = `<p class="text-gray-500">❌ No se encontró "<strong>${escapeHtml(nombreFormulario)}</strong>" en el sistema. Verifica el nombre en el formulario.</p>`;
             }
 
             btn.textContent = '🔍 Info sistema';
@@ -1116,7 +1076,7 @@
             <h4 class="font-bold text-corporate-blue mb-2 text-xs uppercase tracking-wide">${sec.title}</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
                 sec.fields.forEach(([lbl, val]) => {
-                    html += `<div><p class="modal-label">${lbl}</p><p class="text-sm mt-0.5 break-words">${val}</p></div>`;
+                    html += `<div><p class="modal-label">${lbl}</p><p class="text-sm mt-0.5 break-words">${escapeHtml(val)}</p></div>`;
                 });
                 html += `</div></div>`;
             });
@@ -1134,15 +1094,15 @@
 
             if (est) {
                 sibc.innerHTML = `<div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-            <div><span class="font-semibold text-blue-700">Nombre:</span> ${est.Nombre}</div>
-            <div><span class="font-semibold text-blue-700">Código:</span> <strong class="text-corporate-blue">${est.Codigo}</strong></div>
-            <div><span class="font-semibold text-blue-700">Docente:</span> ${est.Docente || '—'}</div>
-            <div><span class="font-semibold text-blue-700">Encargado:</span> ${est.Encargado || '—'}</div>
+            <div><span class="font-semibold text-blue-700">Nombre:</span> ${escapeHtml(est.Nombre)}</div>
+            <div><span class="font-semibold text-blue-700">Código:</span> <strong class="text-corporate-blue">${escapeHtml(est.Codigo)}</strong></div>
+            <div><span class="font-semibold text-blue-700">Docente:</span> ${escapeHtml(est.Docente || '—')}</div>
+            <div><span class="font-semibold text-blue-700">Encargado:</span> ${escapeHtml(est.Encargado || '—')}</div>
         </div>`;
             } else if (estudiantesDB.length === 0) {
                 sibc.innerHTML = `<p class="text-xs text-orange-600">⚠️ Sin conexión al servidor Express (localhost:3000).</p>`;
             } else {
-                sibc.innerHTML = `<p class="text-xs text-gray-500">❌ "${nombre}" no encontrado en el sistema.</p>`;
+                sibc.innerHTML = `<p class="text-xs text-gray-500">❌ "${escapeHtml(nombre)}" no encontrado en el sistema.</p>`;
             }
 
             document.getElementById('detailModal').classList.add('open');

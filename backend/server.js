@@ -3,6 +3,9 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
@@ -33,27 +36,102 @@ function filtroSede(consulta, sede) {
   return consulta.ilike("Sede", patron);
 }
 
-// --- Middlewares ---
-app.use(cors());
-app.use(express.json());
-
-// --- Inicializar Supabase ---
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-  console.error(
-    "❌ ERROR: Faltan variables de entorno SUPABASE_URL o SUPABASE_KEY",
-  );
+// --- Variables de entorno obligatorias ---
+const REQUIRED_ENV = [
+  "SUPABASE_URL",
+  "SUPABASE_KEY",
+  "JWT_SECRET",
+  "ADMIN_USER",
+  "ADMIN_PASSWORD_HASH",
+];
+const faltantes = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (faltantes.length) {
+  console.error(`❌ ERROR: Faltan variables de entorno: ${faltantes.join(", ")}`);
   process.exit(1);
 }
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY,
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// --- Middlewares ---
+// CORS restringido: cualquier origen que coincida con el host al que se le
+// está pidiendo (mismo origen, sea cual sea el dominio de producción) +
+// servidores de desarrollo local típicos (Live Server / similares), que son
+// cruzados a propósito (frontend en :5500, backend en :3000).
+const origenesDevPermitidos = new Set([
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+]);
+app.use(
+  cors((req, callback) => {
+    const origin = req.header("Origin");
+    let permitido = true;
+    if (origin) {
+      let mismoOrigen = false;
+      try {
+        mismoOrigen = new URL(origin).host === req.headers.host;
+      } catch {
+        mismoOrigen = false;
+      }
+      permitido = mismoOrigen || origenesDevPermitidos.has(origin);
+    }
+    callback(null, { origin: permitido });
+  }),
 );
+app.use(express.json());
 
 // --- Servir el frontend ---
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 /* ====================================
-   1. OBTENER TODOS LOS REGISTROS
+   AUTENTICACIÓN (JWT)
+==================================== */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Demasiados intentos. Intenta de nuevo más tarde." },
+});
+
+app.post("/api/login", loginLimiter, async (req, res) => {
+  try {
+    const { usuario, password } = req.body;
+    if (!usuario || !password) {
+      return res.status(400).json({ success: false, error: "Usuario y contraseña requeridos" });
+    }
+
+    const esValido =
+      usuario === process.env.ADMIN_USER &&
+      (await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH));
+
+    if (!esValido) {
+      return res.status(401).json({ success: false, error: "Credenciales inválidas" });
+    }
+
+    const token = jwt.sign({ usuario }, process.env.JWT_SECRET, { expiresIn: "8h" });
+    res.json({ success: true, token });
+  } catch (err) {
+    console.error("❌ Error en login:", err.message);
+    res.status(500).json({ success: false, error: "Error interno del servidor" });
+  }
+});
+
+// Protege las rutas de escritura: exige "Authorization: Bearer <token>"
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: "No autenticado" });
+
+  try {
+    req.usuario = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: "Sesión inválida o expirada" });
+  }
+}
+
+/* ====================================
+   1. OBTENER TODOS LOS REGISTROS (público, lo usa la lista de salida)
    Filtro opcional por sede:  /api/codigos?sede=Merced
    Sin el parámetro (o con sede=TODAS) devuelve todas las sedes.
 ==================================== */
@@ -81,7 +159,7 @@ app.get("/api/codigos", async (req, res) => {
 });
 
 /* ====================================
-   1.b SEDES DISPONIBLES (DINÁMICAS)
+   1.b SEDES DISPONIBLES (DINÁMICAS, público)
    Se descubren desde la propia base de datos:
    son los valores distintos de la columna Sede.
    No hay ninguna lista fija en el código.
@@ -126,11 +204,23 @@ async function existeCodigoEnSede(Codigo, sede, ignorarId = null) {
   return data.length > 0;
 }
 
+// Validación mínima de un registro de código (igual a lo que ya exige el formulario)
+function validarCodigoPayload(body) {
+  const Nombre = (body.Nombre ?? "").toString().trim();
+  const Codigo = body.Codigo;
+  if (!Nombre) return "El nombre es obligatorio";
+  if (Codigo === undefined || Codigo === null || Codigo === "") return "El código es obligatorio";
+  return null;
+}
+
 /* ====================================
-   2. AGREGAR UN NUEVO REGISTRO
+   2. AGREGAR UN NUEVO REGISTRO (requiere sesión admin)
 ==================================== */
-app.post("/api/codigos", async (req, res) => {
+app.post("/api/codigos", requireAuth, async (req, res) => {
   try {
+    const errorValidacion = validarCodigoPayload(req.body);
+    if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
     const { Nombre, Codigo, Docente, Encargado } = req.body;
     const Sede = normalizarSede(req.body.Sede);
 
@@ -150,15 +240,18 @@ app.post("/api/codigos", async (req, res) => {
     res.json({ success: true, nuevo: data[0] });
   } catch (err) {
     console.error("❌ Error insertando registro:", err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 /* ====================================
-   3. ACTUALIZAR REGISTRO EXISTENTE
+   3. ACTUALIZAR REGISTRO EXISTENTE (requiere sesión admin)
 ==================================== */
-app.put("/api/codigos/:id", async (req, res) => {
+app.put("/api/codigos/:id", requireAuth, async (req, res) => {
   try {
+    const errorValidacion = validarCodigoPayload(req.body);
+    if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
     const { id } = req.params;
     const { Nombre, Codigo, Docente, Encargado } = req.body;
     const Sede = normalizarSede(req.body.Sede);
@@ -191,14 +284,14 @@ app.put("/api/codigos/:id", async (req, res) => {
     res.json({ success: true, actualizado: data[0] });
   } catch (err) {
     console.error("❌ Error actualizando registro:", err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 /* ====================================
-   4. ELIMINAR UN REGISTRO
+   4. ELIMINAR UN REGISTRO (requiere sesión admin)
 ==================================== */
-app.delete("/api/codigos/:id", async (req, res) => {
+app.delete("/api/codigos/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -216,95 +309,59 @@ app.delete("/api/codigos/:id", async (req, res) => {
     res.json({ success: true, eliminado: data[0] });
   } catch (err) {
     console.error("❌ Error eliminando registro:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/* ====================================
+   5. SALIDAS ANTICIPADAS (proxy del formulario de Google)
+   Antes el frontend llamaba directo a la API de Google Sheets con una
+   API key hardcodeada en el HTML. Ahora el backend hace esa llamada con
+   sus propias credenciales y el frontend sólo consume /api/salidas.
+==================================== */
+let salidasTabCache = null; // nombre de la pestaña, se resuelve una vez por arranque
+
+async function resolverTabSalidas() {
+  if (salidasTabCache) return salidasTabCache;
+
+  const { SALIDAS_SHEET_ID, SALIDAS_SHEET_GID, GOOGLE_API_KEY } = process.env;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SALIDAS_SHEET_ID}?key=${GOOGLE_API_KEY}`,
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  const meta = await res.json();
+  const sheet = meta.sheets.find((s) => String(s.properties.sheetId) === SALIDAS_SHEET_GID);
+  if (!sheet) throw new Error(`No existe pestaña con gid=${SALIDAS_SHEET_GID}`);
+
+  salidasTabCache = sheet.properties.title;
+  return salidasTabCache;
+}
+
+app.get("/api/salidas", async (req, res) => {
+  try {
+    const { SALIDAS_SHEET_ID, GOOGLE_API_KEY } = process.env;
+    if (!SALIDAS_SHEET_ID || !GOOGLE_API_KEY) {
+      return res.status(500).json({ error: "Salidas anticipadas no está configurado" });
+    }
+
+    const tab = await resolverTabSalidas();
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SALIDAS_SHEET_ID}/values/${encodeURIComponent(tab)}?key=${GOOGLE_API_KEY}`;
+    const sheetRes = await fetch(url);
+    if (!sheetRes.ok) {
+      const err = await sheetRes.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${sheetRes.status}`);
+    }
+
+    const json = await sheetRes.json();
+    const values = json.values || [];
+    res.json({ headerRow: values[0] || [], rows: values.slice(1) });
+  } catch (err) {
+    console.error("❌ Error al obtener salidas:", err.message);
     res.status(500).json({ error: err.message });
   }
-});
-
-/* ====================================
-   5. LOGIN SENCILLO (HARDCODED)
-==================================== */
-app.post("/api/login", (req, res) => {
-  const { usuario, password } = req.body;
-  if (usuario === "root" && password === "123") {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, error: "Credenciales inválidas" });
-  }
-});
-/* ====================================
-   RUTAS PARA TABLA GRADOS
-==================================== */
-// Obtener todos los estudiantes
-app.get("/api/grados", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("grados")
-      .select("*")
-      .order("Estudiante", { ascending: true });
-
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    console.error("❌ Error obteniendo estudiantes:", err.message);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-// Buscar estudiante por Código o Nombre
-app.get("/api/grados/buscar", async (req, res) => {
-  const { query } = req.query;
-  try {
-    const { data, error } = await supabase
-      .from("grados")
-      .select("*")
-      .or(`Codigo.eq.${query},Estudiante.ilike.%${query}%`);
-
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    console.error("❌ Error buscando estudiante:", err.message);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-// Actualizar asistencia
-app.put("/api/grados/asistencia/:id", async (req, res) => {
-  const { id } = req.params;
-  const { estado1, estado2 } = req.body;
-
-  try {
-    const { data, error } = await supabase
-      .from("grados")
-      .update({ estado1, estado2 })
-      .eq("id", id)
-      .select();
-
-    if (error) throw error;
-    res.json({ success: true, actualizado: data[0] });
-  } catch (err) {
-    console.error("❌ Error actualizando asistencia:", err.message);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-});
-
-/* ====================================
-   LOGIN SENCILLO
-==================================== */
-app.post("/api/login", (req, res) => {
-  const { usuario, password } = req.body;
-  if (usuario === "root" && password === "123") {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, error: "Credenciales inválidas" });
-  }
-});
-/* ====================================
-   RUTA PARA ENTREGAR CONFIGURACIÓN DE SUPABASE
-==================================== */
-app.get("/api/config", (req, res) => {
-  res.json({
-    supabaseUrl: process.env.SUPABASE_URL,
-    supabaseKey: process.env.SUPABASE_KEY,
-  });
 });
 
 /* ====================================
@@ -312,6 +369,16 @@ app.get("/api/config", (req, res) => {
 ==================================== */
 app.use((req, res) => {
   res.status(404).json({ error: "Ruta no encontrada" });
+});
+
+/* ====================================
+   MANEJO DE ERRORES NO CONTROLADOS
+   (p. ej. JSON malformado en el body): responde JSON genérico
+   en vez de dejar que Express filtre el stack trace al cliente.
+==================================== */
+app.use((err, req, res, next) => {
+  console.error("❌ Error no controlado:", err.message);
+  res.status(500).json({ error: "Error interno del servidor" });
 });
 
 /* ====================================
