@@ -229,3 +229,56 @@ body {
     align-items: center;
     gap: 0.5rem;
 }
+
+/* ══════════════════════════════════════════
+   Paso "¿Quién recoge?"
+══════════════════════════════════════════ */
+.quick-recoge-btn {
+    padding: 0.65rem 0.25rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #1E3A8A;
+    background: #f8fafc;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.quick-recoge-btn:hover {
+    border-color: #1E3A8A;
+    background: #eff6ff;
+    transform: translateY(-1px);
+}
+
+.theme-dark .quick-recoge-btn {
+    background: #0f3460;
+    border-color: #16213e;
+    color: #93c5fd;
+}
+
+.theme-dark .quick-recoge-btn:hover {
+    border-color: #3B82F6;
+    background: #16213e;
+}
+
+.recoge-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.theme-dark .recoge-badge {
+    background: #064e3b;
+    color: #6ee7b7;
+    border-color: #065f46;
+}
