@@ -3,106 +3,41 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Códigos</title>
     <link rel="icon" href="img/logo.png" type="image/x-icon">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'corporate-red': '#DC2626',
+                        'corporate-blue': '#1E3A8A',
+                        'corporate-skyblue': '#3B82F6',
+                        'corporate-white': '#FFFFFF',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Estilos compartidos con el resto del sitio + extras de este módulo -->
+    <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/admin.css">
-
-
-    <style>
-        /* Fondo general */
-        body {
-            background: linear-gradient(135deg, #3c3f41, #2f3234);
-            /* Gris oscuro suave */
-            color: #e0e0e0;
-            /* Texto claro pero no blanco puro */
-        }
-
-
-        .navbar-brand {
-            color: #e0e0e0 !important;
-        }
-
-        /* Contenedor principal */
-        .container {
-            background: rgba(50, 52, 54, 0.9);
-            /* Fondo gris opaco */
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Tabla */
-
-
-        /* Encabezado de la tabla */
-        thead.thead-dark {
-            background-color: #222426 !important;
-            /* Muy oscuro para diferenciar */
-        }
-
-        thead.thead-dark th {
-            color: #f1f1f1;
-        }
-
-
-
-        tbody tr:hover {
-            background-color: rgba(80, 82, 84, 0.9);
-            /* Hover sutil */
-        }
-
-        /* Botones */
-        .btn-primary {
-            background-color: #4a76a8;
-            border-color: #4a76a8;
-        }
-
-        .btn-info {
-            background-color: #5c8a94;
-            border-color: #5c8a94;
-        }
-
-        .btn-danger {
-            background-color: #a64a4a;
-            border-color: #a64a4a;
-        }
-
-        /* Inputs y selects */
-        .form-control {
-            background: rgba(40, 42, 44, 0.9);
-            color: #f1f1f1;
-            border: 1px solid #5c5f62;
-        }
-
-        .form-control::placeholder {
-            color: #aaa;
-        }
-
-        /* Modal */
-        .modal-content {
-            background: rgba(45, 47, 49, 0.95);
-            color: #e0e0e0;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
-        }
-
-        /* Selects y datalist */
-        select.form-control {
-            background: rgba(50, 52, 54, 0.9);
-            color: #e0e0e0;
-        }
-
-        /* Sutil separación visual */
-        hr {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    </style>
-
 </head>
 
-<body>
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <script>
         // 🔒 Verificar login antes de mostrar admin.
         // El backend también exige este token en cada escritura (ver /api/codigos);
@@ -112,167 +47,344 @@
         }
     </script>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4 bg-dark">
-        <img src="img/logo.png" alt="logo" width="50" height="50" class="d-inline-block align-top mr-2"
-            style="border-radius: 50%;">
-        <a class="navbar-brand brand-link" href="index.html">Gestión Códigos</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+    <!-- ══════════════ NAVBAR ══════════════ -->
+    <nav class="nav-custom bg-white border-b border-gray-200 nav-shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <img src="img/logo.png" alt="logo"
+                        class="w-10 h-10 rounded-full mr-3 border-2 border-corporate-blue">
+                    <a href="index.html"
+                        class="text-corporate-blue text-xl font-bold hover:text-corporate-skyblue transition-colors">
+                        Gestión Estudiantes
+                    </a>
+                </div>
+
+                <button id="mobileMenuBtn" class="md:hidden text-corporate-blue focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <span id="navBienvenida" class="text-gray-500 text-sm font-medium mr-2"></span>
+                    <a href="admin.html"
+                        class="text-corporate-blue bg-blue-50 px-4 py-2 rounded-md font-semibold border-b-2 border-corporate-blue">🔑
+                        Códigos</a>
+                    <a href="usuarios.html" id="navUsuariosItem" style="display:none;"
+                        class="text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-4 py-2 rounded-md transition-all font-medium">👥
+                        Usuarios</a>
+                    <a href="#" onclick="cerrarSesion()"
+                        class="text-corporate-red hover:bg-red-50 px-4 py-2 rounded-md transition-all font-medium">🚪
+                        Salir</a>
+                </div>
+            </div>
+
+            <div id="mobileMenu" class="hidden md:hidden pb-3 border-t border-gray-100 mt-2 pt-2">
+                <div id="navBienvendidaMobile" class="px-3 py-2 text-gray-500 text-sm font-medium"></div>
+                <a href="admin.html" class="block text-corporate-blue bg-blue-50 px-3 py-2 rounded-md font-semibold">🔑
+                    Códigos</a>
+                <a href="usuarios.html" id="navUsuariosItemMobile" style="display:none;"
+                    class="block text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-3 py-2 rounded-md font-medium">👥
+                    Usuarios</a>
+                <a href="#" onclick="cerrarSesion()"
+                    class="block text-corporate-red hover:bg-red-50 px-3 py-2 rounded-md font-medium">🚪 Salir</a>
+            </div>
+        </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <h2 class="mb-0">Administración de Códigos</h2>
-            </div>
-            <div class="col-md-6 d-flex align-items-center justify-content-md-end mt-2 mt-md-0">
-                <!-- Las opciones se cargan dinámicamente desde la base de datos -->
-                <select id="filtroSede" class="form-control mr-2" style="max-width: 160px;">
-                    <option value="">🟪 TODAS</option>
-                </select>
-                <select id="filtroDocente" class="form-control mr-2" style="max-width: 200px;">
-                    <option value="">Todos los docentes</option>
-                </select>
-                <input id="searchInput" type="text" class="form-control" placeholder="Buscar por nombre o código...">
+    <!-- ══════════════ MAIN ══════════════ -->
+    <main class="flex-grow container mx-auto px-3 sm:px-4 py-5 max-w-7xl">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-5 text-corporate-blue">🔑 Administración de
+            Códigos</h1>
+
+        <!-- Filtros -->
+        <div class="card-custom card-shadow bg-white rounded-xl p-4 mb-4">
+            <h2 class="text-sm font-semibold text-corporate-blue mb-3">🔍 Filtros</h2>
+            <div class="filter-bar flex flex-wrap gap-2.5 items-end">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sede</label>
+                    <select id="filtroSede"
+                        class="input-custom px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-corporate-blue text-sm min-w-[140px]">
+                        <option value="">🟪 TODAS</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Docente</label>
+                    <select id="filtroDocente"
+                        class="input-custom px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-corporate-blue text-sm min-w-[160px]">
+                        <option value="">Todos los docentes</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buscar</label>
+                    <input id="searchInput" type="text" placeholder="Nombre o código..."
+                        class="input-custom px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-corporate-blue text-sm">
+                </div>
             </div>
         </div>
 
-        <div class="d-flex mb-3">
-            <button class="btn btn-primary mr-2" data-toggle="modal" data-target="#modalAgregar">➕ Agregar
-                Código</button>
-            <button id="btnEditarMasivo" class="btn btn-info" disabled>
-                ✏️ Edición Masiva (<span id="contadorSeleccionados">0</span>)
-            </button>
+        <!-- Acciones -->
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <button onclick="abrirModalAgregar()"
+                class="bg-corporate-blue hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">➕
+                Agregar Código</button>
+            <button id="btnEditarMasivo" onclick="abrirModalEditarMasivo()" disabled
+                class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">✏️
+                Edición Masiva (<span id="contadorSeleccionados">0</span>)</button>
+            <button onclick="descargarCSV()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">⬇️
+                Descargar CSV</button>
+            <button onclick="abrirModalImportar()"
+                class="bg-sky-600 hover:bg-sky-700 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">⬆️
+                Importar CSV / texto</button>
+            <button onclick="eliminarTodos()"
+                class="bg-corporate-red hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm ml-auto">🗑️
+                Eliminar TODOS</button>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped">
-                <thead class="thead-dark">
+        <!-- Tabla -->
+        <div class="admin-table-wrapper rounded-xl overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="admin-table-head">
                     <tr>
-                        <th><input type="checkbox" id="seleccionarTodos" title="Seleccionar todos"></th>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Código</th>
-                        <th>Docente</th>
-                        <th>Encargado</th>
-                        <th>Sede</th>
-                        <th>Acciones</th>
+                        <th class="px-3 py-3 text-left"><input type="checkbox" id="seleccionarTodos"
+                                title="Seleccionar todos" class="w-4 h-4"></th>
+                        <th class="px-3 py-3 text-left">ID</th>
+                        <th class="px-3 py-3 text-left">Nombre</th>
+                        <th class="px-3 py-3 text-left">Código</th>
+                        <th class="px-3 py-3 text-left">Docente</th>
+                        <th class="px-3 py-3 text-left">Encargado</th>
+                        <th class="px-3 py-3 text-left">Sede</th>
+                        <th class="px-3 py-3 text-left">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaCodigos"></tbody>
             </table>
         </div>
-    </div>
+    </main>
 
-    <!-- 🔹 Datalist global para sugerencias de docentes -->
+    <!-- Datalists compartidas por los formularios -->
     <datalist id="listaDocentes"></datalist>
-
-    <!-- 🔹 Datalist global con las sedes existentes en la base de datos.
-             Al ser un datalist se puede elegir una sede existente o escribir
-             una nueva sin tocar el código. -->
     <datalist id="listaSedes"></datalist>
 
-    <!-- Modal Agregar -->
-    <div class="modal fade" id="modalAgregar" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="formAgregar">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Agregar Código</h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="id">
-                        <input type="text" class="form-control mb-2" name="nombre" placeholder="Nombre" required>
-                        <input type="text" class="form-control mb-2" name="codigo" placeholder="Código" required>
-                        <!-- 🔹 Input con datalist para sugerir docentes -->
-                        <input type="text" class="form-control mb-2" name="docente" placeholder="Docente"
-                            list="listaDocentes">
-                        <input type="text" class="form-control mb-2" name="encargado" placeholder="Encargado">
-                        <input type="text" class="form-control mb-2" name="sede" placeholder="Sede" list="listaSedes"
-                            required>
-                        <small class="text-muted" id="ayudaSedeAgregar"></small>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-success">Guardar</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    </div>
-                </form>
+    <!-- ══════════ MODAL AGREGAR ══════════ -->
+    <div id="modalAgregar" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-md my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">➕ Agregar Código</h3>
+                <button type="button" onclick="cerrarModalAgregar()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <form id="formAgregar" class="p-5 space-y-3">
+                <input type="text" name="nombre" placeholder="Nombre" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="codigo" placeholder="Código" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="docente" placeholder="Docente" list="listaDocentes"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="encargado" placeholder="Encargado"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="sede" placeholder="Sede" list="listaSedes" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <p class="text-xs text-gray-500" id="ayudaSedeAgregar"></p>
+                <div class="flex gap-2 pt-1">
+                    <button type="submit"
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Guardar</button>
+                    <button type="button" onclick="cerrarModalAgregar()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════ MODAL EDITAR INDIVIDUAL ══════════ -->
+    <div id="modalEditar" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-md my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">✏️ Editar Código</h3>
+                <button type="button" onclick="cerrarModalEditar()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <form id="formEditar" class="p-5 space-y-3">
+                <input type="hidden" name="id">
+                <input type="text" name="nombre" placeholder="Nombre" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="codigo" placeholder="Código" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="docente" placeholder="Docente" list="listaDocentes"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="encargado" placeholder="Encargado"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="sede" placeholder="Sede" list="listaSedes"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <div class="flex gap-2 pt-1">
+                    <button type="submit"
+                        class="flex-1 bg-corporate-blue hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Actualizar</button>
+                    <button type="button" onclick="cerrarModalEditar()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════ MODAL EDICIÓN MASIVA ══════════ -->
+    <div id="modalEditarMasivo" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-md my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">✏️ Edición Masiva</h3>
+                <button type="button" onclick="cerrarModalEditarMasivo()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <form id="formEditarMasivo" class="p-5 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Campo a
+                        editar</label>
+                    <select id="campoEditar"
+                        class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                        <option value="Docente">Docente</option>
+                        <option value="Encargado">Encargado</option>
+                        <option value="Sede">Sede</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Nuevo
+                        valor</label>
+                    <input type="text" id="nuevoValor" placeholder="Ingrese nuevo valor" list="listaDocentes"
+                        class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                </div>
+                <p class="text-xs text-gray-500">Se actualizarán <span id="cantidadCodigos" class="font-semibold">0</span>
+                    registro(s) seleccionado(s).</p>
+                <div class="flex gap-2 pt-1">
+                    <button type="submit"
+                        class="flex-1 bg-corporate-blue hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Actualizar</button>
+                    <button type="button" onclick="cerrarModalEditarMasivo()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════ MODAL IMPORTAR ══════════ -->
+    <div id="modalImportar" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-lg my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">⬆️ Importar registros</h3>
+                <button type="button" onclick="cerrarModalImportar()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <div class="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
+                <p class="text-xs text-gray-500">
+                    Primera fila con encabezados <code class="bg-gray-100 px-1 rounded">Nombre,Codigo,Docente,Encargado,Sede</code>
+                    (coma o tabulación). Sube un archivo .csv o pega el texto.
+                </p>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Archivo
+                        CSV</label>
+                    <input type="file" id="archivoCSV" accept=".csv,text/csv,text/plain"
+                        class="input-custom w-full text-sm border-2 border-gray-300 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">…o pega el
+                        texto aquí</label>
+                    <textarea id="textoImportar" rows="6" placeholder="Nombre,Codigo,Docente,Encargado,Sede
+Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
+                        class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm"></textarea>
+                </div>
+                <button type="button" onclick="previsualizarImportacion()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-semibold transition-all">👁️
+                    Previsualizar</button>
+                <div id="previewImportar" class="text-sm"></div>
+            </div>
+            <div class="flex gap-2 p-5 pt-0">
+                <button type="button" id="btnConfirmarImportar" disabled onclick="confirmarImportacion()"
+                    class="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Importar</button>
+                <button type="button" onclick="cerrarModalImportar()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Editar Individual -->
-    <div class="modal fade" id="modalEditar" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="formEditar">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Editar Código</h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="id">
-                        <input type="text" class="form-control mb-2" name="nombre" placeholder="Nombre" required>
-                        <input type="text" class="form-control mb-2" name="codigo" placeholder="Código" required>
-                        <!-- 🔹 Input con datalist para sugerir docentes -->
-                        <input type="text" class="form-control mb-2" name="docente" placeholder="Docente"
-                            list="listaDocentes">
-                        <input type="text" class="form-control mb-2" name="encargado" placeholder="Encargado">
-                        <input type="text" class="form-control mb-2" name="sede" placeholder="Sede" list="listaSedes">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Actualizar</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    </div>
-                </form>
+    <!-- Theme Toggle Button -->
+    <button id="toggleTheme"
+        class="theme-toggle-btn bg-corporate-blue hover:bg-blue-700 text-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+        title="Cambiar tema">
+        <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
+    <!-- Footer -->
+    <footer class="footer-custom text-white mt-8 sm:mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8 md:py-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                <div>
+                    <h5 class="text-base sm:text-lg font-bold mb-2 sm:mb-3 text-white">Gestión Estudiantes</h5>
+                    <p class="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                        Sistema profesional para la gestión y control de listas de salida de estudiantes.
+                    </p>
+                </div>
+                <div>
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Enlaces útiles</h6>
+                    <ul class="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <li><a href="index.html"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Inicio</a></li>
+                        <li><a href="usuarios.html"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Usuarios</a></li>
+                        <li><a href="#" onclick="window.scrollTo(0,0)"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Ir arriba</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="md:text-right">
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Contacto</h6>
+                    <p class="text-gray-300 mb-2 text-xs sm:text-sm">
+                        Desarrollado por
+                        <a href="https://www.instagram.com/yeison02._.ssj?igsh=cTBqc2I4YXpwbXFj" target="_blank"
+                            class="text-corporate-skyblue hover:text-blue-300 transition-colors font-semibold">
+                            Yeison Prada
+                        </a>
+                    </p>
+                    <p class="text-gray-400 text-xs sm:text-sm">
+                        &copy; <span id="year"></span> Todos los derechos reservados.
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
+    </footer>
 
-    <!-- Modal Editar Masivo -->
-    <div class="modal fade" id="modalEditarMasivo" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="formEditarMasivo">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edición Masiva</h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Campo a editar:</label>
-                            <select class="form-control mb-3" id="campoEditar">
-                                <option value="Docente">Docente</option>
-                                <option value="Encargado">Encargado</option>
-                                <option value="Sede">Sede</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Nuevo valor:</label>
-                            <!-- 🔹 El datalist cambia según el campo elegido (docentes o sedes) -->
-                            <input type="text" class="form-control" id="nuevoValor" placeholder="Ingrese nuevo valor"
-                                list="listaDocentes">
-                        </div>
-                        <small class="text-muted">
-                            Se actualizarán <span id="cantidadCodigos">0</span> registros seleccionados.
-                        </small>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Actualizar</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Si se abre con Live Server (puerto 5500) en vez de por el propio
+        // backend (puerto 3000), las llamadas a /api/... deben ir cruzadas.
+        const API_BASE = window.location.port === '5500' ? 'http://localhost:3000' : '';
+
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', function () {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        });
+
+        // Modo oscuro
+        const toggleThemeBtn = document.getElementById('toggleTheme');
+        const themeIcon = document.getElementById('themeIcon');
+        function setTheme(dark) {
+            if (dark) {
+                document.body.classList.add('theme-dark');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
+                toggleThemeBtn.setAttribute('title', 'Modo claro');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.body.classList.remove('theme-dark');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+                toggleThemeBtn.setAttribute('title', 'Modo oscuro');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        toggleThemeBtn.addEventListener('click', () => setTheme(!document.body.classList.contains('theme-dark')));
+        if (localStorage.getItem('theme') === 'dark') setTheme(true);
+        document.getElementById('year').textContent = new Date().getFullYear();
+
         let codigosGlobal = [];
         let seleccionados = new Set();
 
@@ -294,26 +406,60 @@
         // Si el backend rechaza el token (vencido o inválido), vuelve a pedir login.
         function manejarRespuestaAuth(res) {
             if (res.status === 401) {
-                localStorage.removeItem("authToken");
-                localStorage.removeItem("loggedIn");
-                window.location.href = "login.html";
+                cerrarSesion();
+                return true;
+            }
+            if (res.status === 403) {
+                alert("No tienes permisos para esa acción.");
                 return true;
             }
             return false;
         }
 
+        function cerrarSesion(porInactividad) {
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("loggedIn");
+            localStorage.removeItem("rol");
+            localStorage.removeItem("nombreUsuario");
+            window.location.href = "login.html" + (porInactividad ? "?motivo=inactividad" : "");
+        }
+
+        /* ──────────────────────────────────────────
+           SESIÓN: datos de bienvenida, visibilidad del
+           enlace "Usuarios" (sólo rol admin) e inactividad.
+        ────────────────────────────────────────── */
+        const rolActual = localStorage.getItem("rol") || "";
+        const textoBienvenida = "👤 " + (localStorage.getItem("nombreUsuario") || "") + " (" + rolActual + ")";
+        document.getElementById("navBienvenida").textContent = textoBienvenida;
+        document.getElementById("navBienvendidaMobile").textContent = textoBienvenida;
+        if (rolActual === "admin") {
+            document.getElementById("navUsuariosItem").style.display = "";
+            document.getElementById("navUsuariosItemMobile").style.display = "";
+        }
+
+        // Cierra la sesión tras 10 minutos sin actividad del usuario.
+        const LIMITE_INACTIVIDAD_MS = 10 * 60 * 1000;
+        let temporizadorInactividad = null;
+        function reiniciarTemporizadorInactividad() {
+            clearTimeout(temporizadorInactividad);
+            temporizadorInactividad = setTimeout(() => cerrarSesion(true), LIMITE_INACTIVIDAD_MS);
+        }
+        ["mousemove", "mousedown", "keydown", "scroll", "touchstart"].forEach(evento =>
+            document.addEventListener(evento, reiniciarTemporizadorInactividad, { passive: true })
+        );
+        reiniciarTemporizadorInactividad();
+
         // 🔹 Cargar datos
         async function cargarCodigos() {
-            const res = await fetch("/api/codigos");
+            const res = await fetch(`${API_BASE}/api/codigos`);
             const data = await res.json();
             codigosGlobal = data;
-            actualizarDocentes(); // Actualiza lista de docentes
-            await actualizarSedes(); // Actualiza sedes (dinámicas desde la BD)
+            actualizarDocentes();
+            await actualizarSedes();
             aplicarFiltros();
         }
 
         // 🔹 Sedes dinámicas: se piden al backend, que las descubre en la BD.
-        //    No hay ninguna lista fija de sedes en este archivo.
         async function actualizarSedes() {
             const filtro = document.getElementById("filtroSede");
             const listaSedes = document.getElementById("listaSedes");
@@ -321,7 +467,7 @@
 
             let sedes = [];
             try {
-                const res = await fetch("/api/sedes");
+                const res = await fetch(`${API_BASE}/api/sedes`);
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data)) sedes = data;
@@ -349,17 +495,20 @@
             tbody.innerHTML = "";
             codigos.forEach(codigo => {
                 const tr = document.createElement("tr");
+                tr.className = "border-t border-gray-100";
                 tr.innerHTML = `
-                    <td><input type="checkbox" class="select-codigo" data-id="${codigo.id}" ${seleccionados.has(codigo.id) ? 'checked' : ''}></td>
-                    <td>${codigo.id}</td>
-                    <td>${escapeHtml(codigo.Nombre)}</td>
-                    <td>${escapeHtml(codigo.Codigo)}</td>
-                    <td>${escapeHtml(codigo.Docente || '')}</td>
-                    <td>${escapeHtml(codigo.Encargado || '')}</td>
-                    <td>${codigo.Sede ? escapeHtml(codigo.Sede) : '<span class="text-muted">— sin sede —</span>'}</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm mr-1" onclick="abrirModalEditar(${codigo.id})">✏️ Editar</button>
-                        <button class="btn btn-danger btn-sm" onclick="eliminarCodigo(${codigo.id})">🗑️ Eliminar</button>
+                    <td class="px-3 py-2"><input type="checkbox" class="select-codigo w-4 h-4" data-id="${codigo.id}" ${seleccionados.has(codigo.id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-gray-400 font-mono text-xs">${codigo.id}</td>
+                    <td class="px-3 py-2 font-medium">${escapeHtml(codigo.Nombre)}</td>
+                    <td class="px-3 py-2">${escapeHtml(codigo.Codigo)}</td>
+                    <td class="px-3 py-2">${escapeHtml(codigo.Docente || '')}</td>
+                    <td class="px-3 py-2">${escapeHtml(codigo.Encargado || '')}</td>
+                    <td class="px-3 py-2">${codigo.Sede ? `<span class="badge-sede-card" style="--sede-color:#2a78d6"><span class="sede-dot sede-dot--claro"></span>${escapeHtml(codigo.Sede)}</span>` : '<span class="text-gray-400 text-xs">— sin sede —</span>'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <button onclick="abrirModalEditar(${codigo.id})"
+                            class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-all mr-1">✏️</button>
+                        <button onclick="eliminarCodigo(${codigo.id})"
+                            class="bg-corporate-red hover:bg-red-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-all">🗑️</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -386,17 +535,48 @@
 
         document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
         document.getElementById("filtroSede").addEventListener("change", aplicarFiltros);
+        document.getElementById("filtroDocente").addEventListener("change", aplicarFiltros);
 
-        // 🔹 Al abrir "Agregar": si se está trabajando en una sede concreta se
-        //    asigna automáticamente; con TODAS hay que elegirla explícitamente.
-        $('#modalAgregar').on('show.bs.modal', function () {
+        /* ──────────────────────────────────────────
+           MODALES — mismo mecanismo (clase "hidden")
+           que el resto del sitio, sin Bootstrap/jQuery.
+        ────────────────────────────────────────── */
+        function abrirModalAgregar() {
             const sedeActiva = document.getElementById("filtroSede").value;
             const form = document.getElementById("formAgregar");
+            form.reset();
             form.sede.value = sedeActiva;
             document.getElementById("ayudaSedeAgregar").textContent = sedeActiva
                 ? `Sede asignada automáticamente: ${sedeActiva}`
                 : 'Estás consultando TODAS las sedes: selecciona la sede del estudiante.';
-        });
+            document.getElementById("modalAgregar").classList.remove("hidden");
+        }
+        function cerrarModalAgregar() {
+            document.getElementById("modalAgregar").classList.add("hidden");
+        }
+
+        function cerrarModalEditar() {
+            document.getElementById("modalEditar").classList.add("hidden");
+        }
+
+        function abrirModalEditarMasivo() {
+            document.getElementById("modalEditarMasivo").classList.remove("hidden");
+        }
+        function cerrarModalEditarMasivo() {
+            document.getElementById("modalEditarMasivo").classList.add("hidden");
+        }
+
+        function abrirModalImportar() {
+            document.getElementById("modalImportar").classList.remove("hidden");
+        }
+        function cerrarModalImportar() {
+            document.getElementById("modalImportar").classList.add("hidden");
+            document.getElementById("archivoCSV").value = "";
+            document.getElementById("textoImportar").value = "";
+            document.getElementById("previewImportar").innerHTML = "";
+            document.getElementById("btnConfirmarImportar").disabled = true;
+            registrosParaImportar = null;
+        }
 
         // 🔹 Agregar nuevo código
         document.getElementById("formAgregar").addEventListener("submit", async (e) => {
@@ -412,7 +592,7 @@
                 Sede: (data.sede || '').trim()
             };
 
-            const res = await fetch("/api/codigos", {
+            const res = await fetch(`${API_BASE}/api/codigos`, {
                 method: "POST",
                 headers: authHeaders(),
                 body: JSON.stringify(payload)
@@ -425,8 +605,7 @@
                 return;
             }
 
-            $("#modalAgregar").modal("hide");
-            e.target.reset();
+            cerrarModalAgregar();
             cargarCodigos();
         });
 
@@ -441,7 +620,7 @@
             form.docente.value = codigo.Docente || '';
             form.encargado.value = codigo.Encargado || '';
             form.sede.value = codigo.Sede || '';
-            $("#modalEditar").modal("show");
+            document.getElementById("modalEditar").classList.remove("hidden");
         }
 
         // 🔹 Guardar cambios edición individual
@@ -458,7 +637,7 @@
                 Sede: (data.sede || '').trim()
             };
 
-            const res = await fetch(`/api/codigos/${data.id}`, {
+            const res = await fetch(`${API_BASE}/api/codigos/${data.id}`, {
                 method: "PUT",
                 headers: authHeaders(),
                 body: JSON.stringify(payload)
@@ -471,14 +650,14 @@
                 return;
             }
 
-            $("#modalEditar").modal("hide");
+            cerrarModalEditar();
             cargarCodigos();
         });
 
         // 🔹 Eliminar un código
         async function eliminarCodigo(id) {
             if (!confirm("¿Seguro que deseas eliminar este registro?")) return;
-            const res = await fetch(`/api/codigos/${id}`, { method: "DELETE", headers: authHeaders() });
+            const res = await fetch(`${API_BASE}/api/codigos/${id}`, { method: "DELETE", headers: authHeaders() });
             if (manejarRespuestaAuth(res)) return;
             cargarCodigos();
         }
@@ -508,11 +687,6 @@
             document.getElementById('btnEditarMasivo').disabled = contador === 0;
         }
 
-        // 🔹 Edición masiva
-        document.getElementById('btnEditarMasivo').addEventListener('click', () => {
-            $('#modalEditarMasivo').modal('show');
-        });
-
         document.getElementById('formEditarMasivo').addEventListener('submit', async e => {
             e.preventDefault();
             const campo = document.getElementById('campoEditar').value;
@@ -531,7 +705,7 @@
 
                 const actualizado = { ...codigoActual, [campo]: valor };
 
-                const res = await fetch(`/api/codigos/${id}`, {
+                const res = await fetch(`${API_BASE}/api/codigos/${id}`, {
                     method: "PUT",
                     headers: authHeaders(),
                     body: JSON.stringify(actualizado)
@@ -547,7 +721,7 @@
             alert(errores.length
                 ? `Actualizados con ${errores.length} error(es):\n\n` + errores.join("\n")
                 : "Registros actualizados correctamente.");
-            $('#modalEditarMasivo').modal('hide');
+            cerrarModalEditarMasivo();
             seleccionados.clear();
             actualizarContadorSeleccionados();
             cargarCodigos();
@@ -562,24 +736,15 @@
             listaDocentes.innerHTML = '';
 
             const docentes = [...new Set(codigosGlobal.map(c => c.Docente).filter(d => d))];
-
-            // Orden ascendente (A → Z)
             docentes.sort((a, b) => a.localeCompare(b));
 
             docentes.forEach(docente => {
-                // Para el select de filtro
                 filtro.add(new Option(docente, docente));
-
-                // Para el datalist de sugerencias
                 const option = document.createElement('option');
                 option.value = docente;
                 listaDocentes.appendChild(option);
             });
-
         }
-
-        // 🔹 Filtrar por docente seleccionado
-        document.getElementById("filtroDocente").addEventListener("change", aplicarFiltros);
 
         // 🔹 En edición masiva, sugerir docentes o sedes según el campo elegido
         document.getElementById('campoEditar').addEventListener('change', function () {
@@ -588,10 +753,175 @@
             input.value = '';
         });
 
-        // 🔹 Evitar el error de aria-hidden en modales
-        $('#modalEditar').on('hidden.bs.modal', function () {
-            document.activeElement.blur();
-        });
+        /* ──────────────────────────────────────────
+           ELIMINAR TODOS LOS REGISTROS
+        ────────────────────────────────────────── */
+        async function eliminarTodos() {
+            if (codigosGlobal.length === 0) { alert("No hay registros para eliminar."); return; }
+            const texto = prompt(
+                `Esto borrará los ${codigosGlobal.length} registros de la tabla Códigos y no se puede deshacer.\n` +
+                `Escribe BORRAR para confirmar:`
+            );
+            if (texto !== "BORRAR") return;
+
+            const res = await fetch(`${API_BASE}/api/codigos`, {
+                method: "DELETE",
+                headers: authHeaders(),
+                body: JSON.stringify({ confirmar: "ELIMINAR_TODO" })
+            });
+
+            if (manejarRespuestaAuth(res)) return;
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "No se pudo eliminar.");
+                return;
+            }
+            const data = await res.json();
+            alert(`Se eliminaron ${data.eliminados} registros.`);
+            seleccionados.clear();
+            cargarCodigos();
+        }
+
+        /* ──────────────────────────────────────────
+           DESCARGAR CSV (todos los registros, no sólo
+           lo que esté filtrado en pantalla)
+        ────────────────────────────────────────── */
+        function celdaCSV(valor) {
+            const s = String(valor ?? "");
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+
+        function descargarCSV() {
+            if (codigosGlobal.length === 0) { alert("No hay registros para descargar."); return; }
+            const columnas = ["Nombre", "Codigo", "Docente", "Encargado", "Sede"];
+            const filas = [columnas.join(",")];
+            codigosGlobal.forEach(c => {
+                filas.push(columnas.map(col => celdaCSV(c[col])).join(","));
+            });
+            const blob = new Blob(["﻿" + filas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `codigos_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        /* ──────────────────────────────────────────
+           IMPORTAR (CSV o texto pegado, comas o tabs)
+        ────────────────────────────────────────── */
+        function parsearCSV(texto) {
+            const lineas = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim() !== "");
+            if (lineas.length === 0) return { encabezados: [], filas: [] };
+
+            const delimitador = lineas[0].includes("\t") ? "\t" : ",";
+
+            function parsearLinea(linea) {
+                const campos = [];
+                let actual = "";
+                let dentroComillas = false;
+                for (let i = 0; i < linea.length; i++) {
+                    const ch = linea[i];
+                    if (dentroComillas) {
+                        if (ch === '"' && linea[i + 1] === '"') { actual += '"'; i++; }
+                        else if (ch === '"') { dentroComillas = false; }
+                        else { actual += ch; }
+                    } else if (ch === '"') {
+                        dentroComillas = true;
+                    } else if (ch === delimitador) {
+                        campos.push(actual); actual = "";
+                    } else {
+                        actual += ch;
+                    }
+                }
+                campos.push(actual);
+                return campos.map(c => c.trim());
+            }
+
+            const encabezados = parsearLinea(lineas[0]).map(h => h.toLowerCase());
+            const filas = lineas.slice(1).map(parsearLinea);
+            return { encabezados, filas };
+        }
+
+        let registrosParaImportar = null;
+
+        function construirRegistros(texto) {
+            const { encabezados, filas } = parsearCSV(texto);
+            const idx = {
+                nombre: encabezados.indexOf("nombre"),
+                codigo: encabezados.indexOf("codigo"),
+                docente: encabezados.indexOf("docente"),
+                encargado: encabezados.indexOf("encargado"),
+                sede: encabezados.indexOf("sede"),
+            };
+            if (idx.nombre === -1 || idx.codigo === -1) {
+                throw new Error('El encabezado debe incluir al menos "Nombre" y "Codigo".');
+            }
+            return filas.map(f => ({
+                Nombre: f[idx.nombre] || "",
+                Codigo: f[idx.codigo] || "",
+                Docente: idx.docente > -1 ? (f[idx.docente] || "") : "",
+                Encargado: idx.encargado > -1 ? (f[idx.encargado] || "") : "",
+                Sede: idx.sede > -1 ? (f[idx.sede] || "") : "",
+            }));
+        }
+
+        async function previsualizarImportacion() {
+            const archivo = document.getElementById("archivoCSV").files[0];
+            const texto = archivo ? await archivo.text() : document.getElementById("textoImportar").value;
+            const preview = document.getElementById("previewImportar");
+            const btnConfirmar = document.getElementById("btnConfirmarImportar");
+
+            try {
+                if (!texto || !texto.trim()) throw new Error("No hay contenido para importar (sube un archivo o pega texto).");
+                registrosParaImportar = construirRegistros(texto);
+                if (registrosParaImportar.length === 0) throw new Error("No se encontraron filas de datos.");
+
+                const filasPreview = registrosParaImportar.slice(0, 5).map(r =>
+                    `<tr class="border-t border-gray-100"><td class="px-2 py-1">${escapeHtml(r.Nombre)}</td><td class="px-2 py-1">${escapeHtml(r.Codigo)}</td><td class="px-2 py-1">${escapeHtml(r.Docente)}</td><td class="px-2 py-1">${escapeHtml(r.Encargado)}</td><td class="px-2 py-1">${escapeHtml(r.Sede)}</td></tr>`
+                ).join("");
+                preview.innerHTML = `
+                    <p class="text-green-700 font-medium mb-2">✅ ${registrosParaImportar.length} fila(s) detectadas. Vista previa (máx. 5):</p>
+                    <div class="admin-table-wrapper rounded-lg overflow-x-auto">
+                    <table class="w-full text-xs"><thead class="admin-table-head"><tr>
+                        <th class="px-2 py-1.5 text-left">Nombre</th><th class="px-2 py-1.5 text-left">Código</th><th class="px-2 py-1.5 text-left">Docente</th><th class="px-2 py-1.5 text-left">Encargado</th><th class="px-2 py-1.5 text-left">Sede</th>
+                    </tr></thead><tbody>${filasPreview}</tbody></table></div>`;
+                btnConfirmar.disabled = false;
+            } catch (err) {
+                registrosParaImportar = null;
+                preview.innerHTML = `<p class="text-corporate-red">❌ ${escapeHtml(err.message)}</p>`;
+                btnConfirmar.disabled = true;
+            }
+        }
+
+        async function confirmarImportacion() {
+            if (!registrosParaImportar || registrosParaImportar.length === 0) return;
+
+            const res = await fetch(`${API_BASE}/api/codigos/import`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({ registros: registrosParaImportar })
+            });
+
+            if (manejarRespuestaAuth(res)) return;
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(data.error || "No se pudo importar.");
+                return;
+            }
+
+            let mensaje = `✅ Se importaron ${data.insertados} registro(s).`;
+            if (data.omitidos && data.omitidos.length) {
+                mensaje += `\n\n⚠️ ${data.omitidos.length} fila(s) omitida(s):\n` +
+                    data.omitidos.map(o => `Fila ${o.fila}: ${o.motivo}`).join("\n");
+            }
+            alert(mensaje);
+
+            cerrarModalImportar();
+            cargarCodigos();
+        }
 
         cargarCodigos();
     </script>

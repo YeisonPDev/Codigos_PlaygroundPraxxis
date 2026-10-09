@@ -7,135 +7,243 @@
     <title>Login Admin</title>
     <link rel="icon" href="img/logo.png" type="image/x-icon">
 
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'corporate-red': '#DC2626',
+                        'corporate-blue': '#1E3A8A',
+                        'corporate-skyblue': '#3B82F6',
+                        'corporate-white': '#FFFFFF',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Estilos personalizados (compartidos con el resto del sitio) -->
+    <link rel="stylesheet" href="css/index.css">
 </head>
 
-<body class="bg-light">
-    <!-- Elimino el botón de modo oscuro de la parte superior -->
-    <div class="theme-toggle">
-        <button id="toggleTheme" class="btn btn-outline-secondary" title="Cambiar tema">
-            <span id="themeIcon" class="fas fa-moon"></span>
-        </button>
-    </div>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-              <img src="img/logo.png" alt="logo" width="50" height="50" class="d-inline-block align-top mr-2 "
-            style="border-radius: 50%;">
-        <a class="navbar-brand brand-link" href="index.html">Gestión Estudiantes</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">Inicio</a>
-                </li>
-                <li class="nav-item" id="btnLoginNav">
-                    <a class="nav-link" href="login.html">Admin</a>
-                </li>
-                <li class="nav-item d-none" id="btnLogoutNav">
-                    <a class="nav-link text-danger" href="#" onclick="logout()">Salir</a>
-                </li>
-            </ul>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- ══════════════ NAVBAR ══════════════ -->
+    <nav class="nav-custom bg-white border-b border-gray-200 nav-shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <img src="img/logo.png" alt="logo"
+                        class="w-10 h-10 rounded-full mr-3 border-2 border-corporate-blue">
+                    <a href="index.html"
+                        class="text-corporate-blue text-xl font-bold hover:text-corporate-skyblue transition-colors">
+                        Gestión Estudiantes
+                    </a>
+                </div>
+
+                <!-- Mobile menu btn -->
+                <button id="mobileMenuBtn" class="md:hidden text-corporate-blue focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+
+                <!-- Desktop menu -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="index.html"
+                        class="text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-4 py-2 rounded-md transition-all font-medium">Inicio</a>
+                    <a href="https://sistemas-gradosplay.onrender.com/" target="_blank"
+                        class="text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-4 py-2 rounded-md transition-all font-medium">Grados</a>
+                    <a href="salidas.html"
+                        class="text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-4 py-2 rounded-md transition-all font-medium">Salidas</a>
+                    <a href="login.html" id="btnLoginNav"
+                        class="text-corporate-blue bg-blue-50 px-4 py-2 rounded-md font-semibold border-b-2 border-corporate-blue">Admin</a>
+                    <a href="#" id="btnLogoutNav" onclick="logout()"
+                        class="hidden text-corporate-red hover:bg-red-50 px-4 py-2 rounded-md transition-all font-medium">Salir</a>
+                </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div id="mobileMenu" class="hidden md:hidden pb-3 border-t border-gray-100 mt-2 pt-2">
+                <a href="index.html"
+                    class="block text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-3 py-2 rounded-md font-medium">Inicio</a>
+                <a href="https://sistemas-gradosplay.onrender.com/" target="_blank"
+                    class="block text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-3 py-2 rounded-md font-medium">Grados</a>
+                <a href="salidas.html"
+                    class="block text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-3 py-2 rounded-md font-medium">Salidas</a>
+                <a href="login.html"
+                    class="block text-corporate-blue bg-blue-50 px-3 py-2 rounded-md font-semibold">Admin</a>
+            </div>
         </div>
     </nav>
-    <!-- Contenido -->
-    <div class="container d-flex justify-content-center align-items-center vh-80">
-        <div class="card shadow-lg w-100 max-w-400">
-            <div class="card-body">
-                <h4 class="card-title text-center mb-4 text-primary-color">Login Administrador</h4>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label for="usuario">Usuario</label>
-                        <input type="text" class="form-control" id="usuario" required>
+
+    <!-- ══════════════ MAIN ══════════════ -->
+    <main class="flex-grow container mx-auto px-3 sm:px-4 py-10 sm:py-16 max-w-6xl flex items-center justify-center">
+        <div class="w-full max-w-sm">
+            <div class="flex justify-center mb-6">
+                <img src="img/logo.png" alt="logo"
+                    class="w-16 h-16 rounded-full border-4 border-corporate-blue bg-blue-100 p-2 shadow-lg shadow-corporate-blue/30">
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-center mb-6 text-corporate-blue">
+                Login Administrador
+            </h1>
+
+            <div class="card-custom card-shadow bg-white rounded-xl p-6 sm:p-8">
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label for="usuario" class="block text-sm font-semibold mb-1.5 text-corporate-blue">Usuario</label>
+                        <input type="text" id="usuario" required autocomplete="username"
+                            class="input-custom w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-base">
                     </div>
-                    <div class="form-group">
-                        <label for="password">Contraseña</label>
-                        <input type="password" class="form-control" id="password" required>
+                    <div>
+                        <label for="password"
+                            class="block text-sm font-semibold mb-1.5 text-corporate-blue">Contraseña</label>
+                        <input type="password" id="password" required autocomplete="current-password"
+                            class="input-custom w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-base">
                     </div>
-                    <button type="submit" class="btn btn-dark btn-block">Ingresar</button>
+                    <button type="submit"
+                        class="w-full bg-corporate-blue hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:shadow-md transition-all text-base">
+                        Ingresar
+                    </button>
                 </form>
-                <div id="loginError" class="alert alert-danger mt-3 d-none">
+
+                <div id="loginError"
+                    class="hidden mt-4 bg-red-50 border border-red-200 text-corporate-red text-sm rounded-xl px-4 py-3 text-center">
                     ❌ Usuario o contraseña incorrectos
+                </div>
+                <div id="sesionExpirada"
+                    class="hidden mt-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-4 py-3 text-center">
+                    ⏱️ Tu sesión se cerró por inactividad. Ingresa de nuevo.
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+
+    <!-- Theme Toggle Button -->
+    <button id="toggleTheme"
+        class="theme-toggle-btn bg-corporate-blue hover:bg-blue-700 text-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+        title="Cambiar tema">
+        <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
     <!-- Footer -->
-    <footer class="footer mt-auto">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <h5 class="text-uppercase">Gestión Estudiantes</h5>
-                    <p class="mb-1">Sistema profesional para la gestión y control de listas de salida de estudiantes.
+    <footer class="footer-custom text-white mt-8 sm:mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8 md:py-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                <div>
+                    <h5 class="text-base sm:text-lg font-bold mb-2 sm:mb-3 text-white">Gestión Estudiantes</h5>
+                    <p class="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                        Sistema profesional para la gestión y control de listas de salida de estudiantes.
                     </p>
                 </div>
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <h6 class="text-uppercase">Enlaces útiles</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="index.html">Inicio</a></li>
-                        <li><a href="login.html">Admin</a></li>
-                        <li><a href="#" onclick="window.scrollTo(0,0)">Ir arriba</a></li>
+                <div>
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Enlaces útiles</h6>
+                    <ul class="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <li>
+                            <a href="index.html" class="text-gray-300 hover:text-corporate-skyblue transition-colors">
+                                Inicio
+                            </a>
+                        </li>
+                        <li>
+                            <a href="salidas.html"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">
+                                Salidas
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="window.scrollTo(0,0)"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">
+                                Ir arriba
+                            </a>
+                        </li>
                     </ul>
                 </div>
-                <div class="col-md-4 text-md-right">
-                    <h6 class="text-uppercase">Contacto</h6>
-                    <p class="mb-1">Desarrollado por <a
-                            href="https://www.instagram.com/yeison02._.ssj?igsh=cTBqc2I4YXpwbXFj" target="_blank">Yeison
-                            Prada</a></p>
-                    <p class="mb-0">&copy; <span id="year"></span> Todos los derechos reservados.</p>
+                <div class="md:text-right">
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Contacto</h6>
+                    <p class="text-gray-300 mb-2 text-xs sm:text-sm">
+                        Desarrollado por
+                        <a href="https://www.instagram.com/yeison02._.ssj?igsh=cTBqc2I4YXpwbXFj" target="_blank"
+                            class="text-corporate-skyblue hover:text-blue-300 transition-colors font-semibold">
+                            Yeison Prada
+                        </a>
+                    </p>
+                    <p class="text-gray-400 text-xs sm:text-sm">
+                        &copy; <span id="year"></span> Todos los derechos reservados.
+                    </p>
                 </div>
             </div>
         </div>
     </footer>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="https://kit.fontawesome.com/4b8b0b6b7b.js" crossorigin="anonymous"></script>
+
     <script>
+        // Si se abre con Live Server (puerto 5500) en vez de por el propio
+        // backend (puerto 3000), las llamadas a /api/... deben ir cruzadas.
+        const API_BASE = window.location.port === '5500' ? 'http://localhost:3000' : '';
+
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', function () {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        });
+
         // Modo oscuro
         const toggleThemeBtn = document.getElementById('toggleTheme');
         const themeIcon = document.getElementById('themeIcon');
+
         function setTheme(dark) {
             if (dark) {
                 document.body.classList.add('theme-dark');
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
                 toggleThemeBtn.setAttribute('title', 'Modo claro');
                 localStorage.setItem('theme', 'dark');
             } else {
                 document.body.classList.remove('theme-dark');
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
                 toggleThemeBtn.setAttribute('title', 'Modo oscuro');
                 localStorage.setItem('theme', 'light');
             }
         }
+
         toggleThemeBtn.addEventListener('click', function () {
-            const isDark = document.body.classList.contains('theme-dark');
-            setTheme(!isDark);
+            setTheme(!document.body.classList.contains('theme-dark'));
         });
+
         if (localStorage.getItem('theme') === 'dark') {
             setTheme(true);
         }
+
         document.getElementById('year').textContent = new Date().getFullYear();
 
-
         function checkAuth() {
-            const logged = localStorage.getItem("loggedIn");
-            if (logged === "true") {
-                document.getElementById("btnLoginNav").classList.add("d-none");
-                document.getElementById("btnLogoutNav").classList.remove("d-none");
+            if (localStorage.getItem("loggedIn") === "true") {
+                document.getElementById("btnLoginNav").classList.add("hidden");
+                document.getElementById("btnLogoutNav").classList.remove("hidden");
             }
         }
         function logout() {
             localStorage.removeItem("loggedIn");
             localStorage.removeItem("authToken");
+            localStorage.removeItem("rol");
+            localStorage.removeItem("nombreUsuario");
             window.location.href = "index.html";
         }
         checkAuth();
+
+        if (new URLSearchParams(window.location.search).get("motivo") === "inactividad") {
+            document.getElementById("sesionExpirada").classList.remove("hidden");
+        }
 
         // Login
         document.getElementById("loginForm").addEventListener("submit", async (e) => {
@@ -145,7 +253,7 @@
             const password = document.getElementById("password").value;
 
             try {
-                const res = await fetch("/api/login", {
+                const res = await fetch(`${API_BASE}/api/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ usuario, password })
@@ -155,9 +263,11 @@
                 if (data.success) {
                     localStorage.setItem("loggedIn", "true");
                     localStorage.setItem("authToken", data.token);
+                    localStorage.setItem("rol", data.rol || "");
+                    localStorage.setItem("nombreUsuario", data.nombre || "");
                     window.location.href = "admin.html";
                 } else {
-                    document.getElementById("loginError").classList.remove("d-none");
+                    document.getElementById("loginError").classList.remove("hidden");
                 }
             } catch (err) {
                 alert("Error de conexión con el servidor");

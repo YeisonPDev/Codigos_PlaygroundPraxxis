@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Usuarios</title>
+    <link rel="icon" href="img/logo.png" type="image/x-icon">
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'corporate-red': '#DC2626',
+                        'corporate-blue': '#1E3A8A',
+                        'corporate-skyblue': '#3B82F6',
+                        'corporate-white': '#FFFFFF',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Estilos compartidos con el resto del sitio + extras de este módulo -->
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <script>
+        // 🔒 Sólo entra quien tiene sesión Y rol admin.
+        // El backend aplica la misma regla en /api/usuarios (403 si no es admin).
+        if (!localStorage.getItem("authToken")) {
+            window.location.href = "login.html";
+        } else if (localStorage.getItem("rol") !== "admin") {
+            window.location.href = "admin.html";
+        }
+    </script>
+
+    <!-- ══════════════ NAVBAR ══════════════ -->
+    <nav class="nav-custom bg-white border-b border-gray-200 nav-shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <img src="img/logo.png" alt="logo"
+                        class="w-10 h-10 rounded-full mr-3 border-2 border-corporate-blue">
+                    <a href="index.html"
+                        class="text-corporate-blue text-xl font-bold hover:text-corporate-skyblue transition-colors">
+                        Gestión Estudiantes
+                    </a>
+                </div>
+
+                <button id="mobileMenuBtn" class="md:hidden text-corporate-blue focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <span id="navBienvenida" class="text-gray-500 text-sm font-medium mr-2"></span>
+                    <a href="admin.html"
+                        class="text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-4 py-2 rounded-md transition-all font-medium">🔑
+                        Códigos</a>
+                    <a href="usuarios.html"
+                        class="text-corporate-blue bg-blue-50 px-4 py-2 rounded-md font-semibold border-b-2 border-corporate-blue">👥
+                        Usuarios</a>
+                    <a href="#" onclick="cerrarSesion()"
+                        class="text-corporate-red hover:bg-red-50 px-4 py-2 rounded-md transition-all font-medium">🚪
+                        Salir</a>
+                </div>
+            </div>
+
+            <div id="mobileMenu" class="hidden md:hidden pb-3 border-t border-gray-100 mt-2 pt-2">
+                <div id="navBienvendidaMobile" class="px-3 py-2 text-gray-500 text-sm font-medium"></div>
+                <a href="admin.html"
+                    class="block text-gray-700 hover:text-corporate-blue hover:bg-gray-50 px-3 py-2 rounded-md font-medium">🔑
+                    Códigos</a>
+                <a href="usuarios.html" class="block text-corporate-blue bg-blue-50 px-3 py-2 rounded-md font-semibold">👥
+                    Usuarios</a>
+                <a href="#" onclick="cerrarSesion()"
+                    class="block text-corporate-red hover:bg-red-50 px-3 py-2 rounded-md font-medium">🚪 Salir</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ══════════════ MAIN ══════════════ -->
+    <main class="flex-grow container mx-auto px-3 sm:px-4 py-5 max-w-6xl">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-5 text-corporate-blue">👥 Administración de
+            Usuarios</h1>
+
+        <div class="card-custom card-shadow bg-white rounded-xl p-4 mb-4">
+            <div class="flex flex-wrap gap-2.5 items-end">
+                <div class="flex flex-col gap-1 flex-1 min-w-[200px]">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Buscar</label>
+                    <input id="searchInput" type="text" placeholder="Nombre o usuario..."
+                        class="input-custom px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-corporate-blue text-sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex mb-4">
+            <button onclick="abrirModalAgregar()"
+                class="bg-corporate-blue hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all shadow-sm">➕
+                Agregar Usuario</button>
+        </div>
+
+        <div class="admin-table-wrapper rounded-xl overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="admin-table-head">
+                    <tr>
+                        <th class="px-3 py-3 text-left">ID</th>
+                        <th class="px-3 py-3 text-left">Nombre</th>
+                        <th class="px-3 py-3 text-left">Tipo Doc.</th>
+                        <th class="px-3 py-3 text-left">Núm. Doc.</th>
+                        <th class="px-3 py-3 text-left">Usuario</th>
+                        <th class="px-3 py-3 text-left">Rol</th>
+                        <th class="px-3 py-3 text-left">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaUsuarios"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- ══════════ MODAL AGREGAR ══════════ -->
+    <div id="modalAgregar" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-md my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">➕ Agregar Usuario</h3>
+                <button type="button" onclick="cerrarModalAgregar()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <form id="formAgregar" class="p-5 space-y-3">
+                <input type="text" name="nombre" placeholder="Nombre completo" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="tipodoc" placeholder="Tipo de documento (CC, TI...)"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="numdoc" placeholder="Número de documento"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="user" placeholder="Usuario (login)" required autocomplete="off"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="password" name="pass" placeholder="Contraseña" required autocomplete="new-password"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <select name="rol" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                    <option value="usuario">Usuario (sólo Códigos)</option>
+                    <option value="admin">Admin (Códigos + Usuarios)</option>
+                </select>
+                <div class="flex gap-2 pt-1">
+                    <button type="submit"
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Guardar</button>
+                    <button type="button" onclick="cerrarModalAgregar()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════ MODAL EDITAR ══════════ -->
+    <div id="modalEditar" class="hidden fixed inset-0 bg-black/60 z-[9000] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+        <div class="card-custom bg-white rounded-2xl shadow-2xl w-full max-w-md my-6">
+            <div class="bg-corporate-blue text-white px-5 py-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold text-base sm:text-lg">✏️ Editar Usuario</h3>
+                <button type="button" onclick="cerrarModalEditar()"
+                    class="text-2xl leading-none hover:text-red-300 transition-colors">&times;</button>
+            </div>
+            <form id="formEditar" class="p-5 space-y-3">
+                <input type="hidden" name="id">
+                <input type="text" name="nombre" placeholder="Nombre completo" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="tipodoc" placeholder="Tipo de documento (CC, TI...)"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="numdoc" placeholder="Número de documento"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="text" name="user" placeholder="Usuario (login)" required autocomplete="off"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <input type="password" name="pass" placeholder="Nueva contraseña (déjalo vacío para no cambiarla)"
+                    autocomplete="new-password"
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                <select name="rol" required
+                    class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm">
+                    <option value="usuario">Usuario (sólo Códigos)</option>
+                    <option value="admin">Admin (Códigos + Usuarios)</option>
+                </select>
+                <div class="flex gap-2 pt-1">
+                    <button type="submit"
+                        class="flex-1 bg-corporate-blue hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Actualizar</button>
+                    <button type="button" onclick="cerrarModalEditar()"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Theme Toggle Button -->
+    <button id="toggleTheme"
+        class="theme-toggle-btn bg-corporate-blue hover:bg-blue-700 text-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+        title="Cambiar tema">
+        <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
+    <!-- Footer -->
+    <footer class="footer-custom text-white mt-8 sm:mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8 md:py-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                <div>
+                    <h5 class="text-base sm:text-lg font-bold mb-2 sm:mb-3 text-white">Gestión Estudiantes</h5>
+                    <p class="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                        Sistema profesional para la gestión y control de listas de salida de estudiantes.
+                    </p>
+                </div>
+                <div>
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Enlaces útiles</h6>
+                    <ul class="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                        <li><a href="index.html"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Inicio</a></li>
+                        <li><a href="admin.html"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Códigos</a></li>
+                        <li><a href="#" onclick="window.scrollTo(0,0)"
+                                class="text-gray-300 hover:text-corporate-skyblue transition-colors">Ir arriba</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="md:text-right">
+                    <h6 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3 text-white">Contacto</h6>
+                    <p class="text-gray-300 mb-2 text-xs sm:text-sm">
+                        Desarrollado por
+                        <a href="https://www.instagram.com/yeison02._.ssj?igsh=cTBqc2I4YXpwbXFj" target="_blank"
+                            class="text-corporate-skyblue hover:text-blue-300 transition-colors font-semibold">
+                            Yeison Prada
+                        </a>
+                    </p>
+                    <p class="text-gray-400 text-xs sm:text-sm">
+                        &copy; <span id="year"></span> Todos los derechos reservados.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Si se abre con Live Server (puerto 5500) en vez de por el propio
+        // backend (puerto 3000), las llamadas a /api/... deben ir cruzadas.
+        const API_BASE = window.location.port === '5500' ? 'http://localhost:3000' : '';
+
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', function () {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        });
+
+        // Modo oscuro
+        const toggleThemeBtn = document.getElementById('toggleTheme');
+        const themeIcon = document.getElementById('themeIcon');
+        function setTheme(dark) {
+            if (dark) {
+                document.body.classList.add('theme-dark');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
+                toggleThemeBtn.setAttribute('title', 'Modo claro');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.body.classList.remove('theme-dark');
+                themeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+                toggleThemeBtn.setAttribute('title', 'Modo oscuro');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        toggleThemeBtn.addEventListener('click', () => setTheme(!document.body.classList.contains('theme-dark')));
+        if (localStorage.getItem('theme') === 'dark') setTheme(true);
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let usuariosGlobal = [];
+
+        function escapeHtml(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function authHeaders() {
+            return {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + (localStorage.getItem("authToken") || "")
+            };
+        }
+
+        function cerrarSesion(porInactividad) {
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("loggedIn");
+            localStorage.removeItem("rol");
+            localStorage.removeItem("nombreUsuario");
+            window.location.href = "login.html" + (porInactividad ? "?motivo=inactividad" : "");
+        }
+
+        function manejarRespuestaAuth(res) {
+            if (res.status === 401) { cerrarSesion(); return true; }
+            if (res.status === 403) { alert("No tienes permisos para esa acción."); return true; }
+            return false;
+        }
+
+        // Bienvenida + cierre de sesión por 10 min de inactividad (igual que admin.html).
+        const textoBienvenida = "👤 " + (localStorage.getItem("nombreUsuario") || "") + " (" + (localStorage.getItem("rol") || "") + ")";
+        document.getElementById("navBienvenida").textContent = textoBienvenida;
+        document.getElementById("navBienvendidaMobile").textContent = textoBienvenida;
+
+        const LIMITE_INACTIVIDAD_MS = 10 * 60 * 1000;
+        let temporizadorInactividad = null;
+        function reiniciarTemporizadorInactividad() {
+            clearTimeout(temporizadorInactividad);
+            temporizadorInactividad = setTimeout(() => cerrarSesion(true), LIMITE_INACTIVIDAD_MS);
+        }
+        ["mousemove", "mousedown", "keydown", "scroll", "touchstart"].forEach(evento =>
+            document.addEventListener(evento, reiniciarTemporizadorInactividad, { passive: true })
+        );
+        reiniciarTemporizadorInactividad();
+
+        /* ──────────────────────────────────────────
+           MODALES — mismo mecanismo (clase "hidden")
+           que el resto del sitio, sin Bootstrap/jQuery.
+        ────────────────────────────────────────── */
+        function abrirModalAgregar() {
+            document.getElementById("formAgregar").reset();
+            document.getElementById("modalAgregar").classList.remove("hidden");
+        }
+        function cerrarModalAgregar() {
+            document.getElementById("modalAgregar").classList.add("hidden");
+        }
+        function cerrarModalEditar() {
+            document.getElementById("modalEditar").classList.add("hidden");
+        }
+
+        // 🔹 Cargar usuarios
+        async function cargarUsuarios() {
+            const res = await fetch(`${API_BASE}/api/usuarios`, { headers: authHeaders() });
+            if (manejarRespuestaAuth(res)) return;
+            if (!res.ok) { alert("No se pudieron cargar los usuarios."); return; }
+            usuariosGlobal = await res.json();
+            aplicarFiltro();
+        }
+
+        function renderTabla(usuarios) {
+            const tbody = document.getElementById("tablaUsuarios");
+            tbody.innerHTML = "";
+            usuarios.forEach(u => {
+                const esAdmin = u.Rol === 'Admin';
+                const tr = document.createElement("tr");
+                tr.className = "border-t border-gray-100";
+                tr.innerHTML = `
+                    <td class="px-3 py-2 text-gray-400 font-mono text-xs">${u.id}</td>
+                    <td class="px-3 py-2 font-medium">${escapeHtml(u.Nombre)}</td>
+                    <td class="px-3 py-2">${escapeHtml(u.Tipodoc || '')}</td>
+                    <td class="px-3 py-2">${escapeHtml(u.Numdoc ?? '')}</td>
+                    <td class="px-3 py-2">${escapeHtml(u.User)}</td>
+                    <td class="px-3 py-2"><span class="${esAdmin ? 'badge-rol-admin' : 'badge-rol-usuario'}">${escapeHtml(u.Rol)}</span></td>
+                    <td class="px-3 py-2 whitespace-nowrap">
+                        <button onclick="abrirModalEditar(${u.id})"
+                            class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-all mr-1">✏️</button>
+                        <button onclick="eliminarUsuario(${u.id})"
+                            class="bg-corporate-red hover:bg-red-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-all">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function aplicarFiltro() {
+            const texto = document.getElementById("searchInput").value.trim().toLowerCase();
+            const filtrados = usuariosGlobal.filter(u =>
+                !texto ||
+                (u.Nombre || '').toLowerCase().includes(texto) ||
+                (u.User || '').toLowerCase().includes(texto)
+            );
+            renderTabla(filtrados);
+        }
+        document.getElementById("searchInput").addEventListener("input", aplicarFiltro);
+
+        // 🔹 Agregar
+        document.getElementById("formAgregar").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = Object.fromEntries(form.entries());
+
+            const payload = {
+                Nombre: data.nombre,
+                Tipodoc: data.tipodoc || '',
+                Numdoc: data.numdoc || null,
+                User: data.user,
+                Pass: data.pass,
+                Rol: data.rol
+            };
+
+            const res = await fetch(`${API_BASE}/api/usuarios`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (manejarRespuestaAuth(res)) return;
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "No se pudo crear el usuario.");
+                return;
+            }
+
+            cerrarModalAgregar();
+            cargarUsuarios();
+        });
+
+        // 🔹 Abrir modal editar
+        function abrirModalEditar(id) {
+            const u = usuariosGlobal.find(x => x.id === id);
+            if (!u) return;
+            const form = document.getElementById("formEditar");
+            form.id.value = u.id;
+            form.nombre.value = u.Nombre;
+            form.tipodoc.value = u.Tipodoc || '';
+            form.numdoc.value = u.Numdoc ?? '';
+            form.user.value = u.User;
+            form.pass.value = '';
+            form.rol.value = (u.Rol || '').toLowerCase();
+            document.getElementById("modalEditar").classList.remove("hidden");
+        }
+
+        // 🔹 Guardar edición
+        document.getElementById("formEditar").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = Object.fromEntries(form.entries());
+
+            const payload = {
+                Nombre: data.nombre,
+                Tipodoc: data.tipodoc || '',
+                Numdoc: data.numdoc || null,
+                User: data.user,
+                Rol: data.rol
+            };
+            if (data.pass && data.pass.trim()) payload.Pass = data.pass;
+
+            const res = await fetch(`${API_BASE}/api/usuarios/${data.id}`, {
+                method: "PUT",
+                headers: authHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (manejarRespuestaAuth(res)) return;
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "No se pudo actualizar el usuario.");
+                return;
+            }
+
+            cerrarModalEditar();
+            cargarUsuarios();
+        });
+
+        // 🔹 Eliminar
+        async function eliminarUsuario(id) {
+            if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
+            const res = await fetch(`${API_BASE}/api/usuarios/${id}`, { method: "DELETE", headers: authHeaders() });
+            if (manejarRespuestaAuth(res)) return;
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "No se pudo eliminar.");
+                return;
+            }
+            cargarUsuarios();
+        }
+
+        cargarUsuarios();
+    </script>
+</body>
+
+</html>

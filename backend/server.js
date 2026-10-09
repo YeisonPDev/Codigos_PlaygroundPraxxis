@@ -37,13 +37,7 @@ function filtroSede(consulta, sede) {
 }
 
 // --- Variables de entorno obligatorias ---
-const REQUIRED_ENV = [
-  "SUPABASE_URL",
-  "SUPABASE_KEY",
-  "JWT_SECRET",
-  "ADMIN_USER",
-  "ADMIN_PASSWORD_HASH",
-];
+const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_KEY", "JWT_SECRET"];
 const faltantes = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (faltantes.length) {
   console.error(`❌ ERROR: Faltan variables de entorno: ${faltantes.join(", ")}`);
@@ -93,6 +87,10 @@ const loginLimiter = rateLimit({
   message: { success: false, error: "Demasiados intentos. Intenta de nuevo más tarde." },
 });
 
+// Login contra la tabla Usuarios de Supabase (antes era un usuario fijo en .env).
+// Sólo existen dos roles: "admin" (gestiona Códigos Y Usuarios) y "usuario"
+// (gestiona sólo Códigos). La comparación de rol siempre es insensible a
+// mayúsculas porque en la tabla está guardado como "Admin"/"Usuario".
 app.post("/api/login", loginLimiter, async (req, res) => {
   try {
     const { usuario, password } = req.body;
@@ -100,23 +98,39 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: "Usuario y contraseña requeridos" });
     }
 
-    const esValido =
-      usuario === process.env.ADMIN_USER &&
-      (await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH));
+    // .eq() es una consulta parametrizada de PostgREST: el valor del usuario
+    // nunca se concatena a una cadena SQL, así que no es inyectable.
+    const { data, error } = await supabase
+      .from("Usuarios")
+      .select("id, Nombre, User, Pass, Rol")
+      .eq("User", usuario)
+      .limit(1);
 
+    if (error) throw error;
+    const fila = data[0];
+
+    const esValido = fila && (await bcrypt.compare(password, fila.Pass));
     if (!esValido) {
       return res.status(401).json({ success: false, error: "Credenciales inválidas" });
     }
 
-    const token = jwt.sign({ usuario }, process.env.JWT_SECRET, { expiresIn: "8h" });
-    res.json({ success: true, token });
+    const rol = (fila.Rol || "").toLowerCase();
+    const token = jwt.sign(
+      { id: fila.id, usuario: fila.User, nombre: fila.Nombre, rol },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" },
+    );
+    res.json({ success: true, token, nombre: fila.Nombre, rol });
   } catch (err) {
     console.error("❌ Error en login:", err.message);
     res.status(500).json({ success: false, error: "Error interno del servidor" });
   }
 });
 
-// Protege las rutas de escritura: exige "Authorization: Bearer <token>"
+// Protege las rutas que requieren sesión: exige "Authorization: Bearer <token>".
+// El timeout real de 10 minutos de inactividad lo maneja el frontend (cierra
+// la sesión y redirige a login.html); el token en sí dura 12h como techo de
+// seguridad por si un token quedara expuesto.
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
@@ -128,6 +142,17 @@ function requireAuth(req, res, next) {
   } catch {
     res.status(401).json({ error: "Sesión inválida o expirada" });
   }
+}
+
+// Además de estar logueado, exige un rol concreto (usado para /api/usuarios,
+// que sólo el rol "admin" puede gestionar).
+function requireRole(rolRequerido) {
+  return (req, res, next) => {
+    if ((req.usuario?.rol || "") !== rolRequerido) {
+      return res.status(403).json({ error: "No tienes permisos para esta acción" });
+    }
+    next();
+  };
 }
 
 /* ====================================
@@ -309,6 +334,257 @@ app.delete("/api/codigos/:id", requireAuth, async (req, res) => {
     res.json({ success: true, eliminado: data[0] });
   } catch (err) {
     console.error("❌ Error eliminando registro:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/* ====================================
+   4.b ELIMINAR TODOS LOS REGISTROS (requiere sesión + confirmación explícita)
+   Exige {"confirmar":"ELIMINAR_TODO"} en el body para no borrar todo
+   por un script o un clic accidental.
+==================================== */
+app.delete("/api/codigos", requireAuth, async (req, res) => {
+  try {
+    if (req.body?.confirmar !== "ELIMINAR_TODO") {
+      return res.status(400).json({ error: "Falta confirmación explícita" });
+    }
+
+    // Supabase exige un filtro en los DELETE masivos; "id" siempre es > 0.
+    const { data, error } = await supabase.from("Codigos").delete().gt("id", 0).select("id");
+    if (error) throw error;
+
+    res.json({ success: true, eliminados: data.length });
+  } catch (err) {
+    console.error("❌ Error eliminando todos los registros:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/* ====================================
+   4.c IMPORTAR REGISTROS EN LOTE (CSV / texto pegado, ya parseado por el
+   frontend a JSON). Valida y respeta la misma regla de código único por
+   sede, fila por fila, para poder reportar exactamente qué se omitió.
+==================================== */
+app.post("/api/codigos/import", requireAuth, async (req, res) => {
+  try {
+    const registros = Array.isArray(req.body?.registros) ? req.body.registros : null;
+    if (!registros || registros.length === 0) {
+      return res.status(400).json({ error: "No se recibieron registros para importar" });
+    }
+    if (registros.length > 2000) {
+      return res.status(400).json({ error: "Demasiados registros en un solo lote (máx. 2000)" });
+    }
+
+    const insertados = [];
+    const omitidos = [];
+
+    for (let i = 0; i < registros.length; i++) {
+      const fila = registros[i] || {};
+      const numFila = i + 1;
+
+      const errorValidacion = validarCodigoPayload(fila);
+      if (errorValidacion) {
+        omitidos.push({ fila: numFila, motivo: errorValidacion });
+        continue;
+      }
+
+      const Nombre = fila.Nombre.toString().trim();
+      const Codigo = fila.Codigo;
+      const Docente = fila.Docente || "";
+      const Encargado = fila.Encargado || "";
+      const Sede = normalizarSede(fila.Sede);
+
+      try {
+        if (await existeCodigoEnSede(Codigo, Sede)) {
+          omitidos.push({ fila: numFila, motivo: `Código ${Codigo} ya existe en esa sede` });
+          continue;
+        }
+
+        const { error } = await supabase
+          .from("Codigos")
+          .insert([{ Nombre, Codigo, Docente, Encargado, Sede }]);
+
+        if (error) throw error;
+        insertados.push(numFila);
+      } catch (err) {
+        omitidos.push({ fila: numFila, motivo: err.message });
+      }
+    }
+
+    res.json({ success: true, insertados: insertados.length, omitidos });
+  } catch (err) {
+    console.error("❌ Error importando registros:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/* ====================================
+   USUARIOS DEL SISTEMA (sólo rol "admin")
+   Dos roles posibles: "admin" (ve Códigos + Usuarios) y "usuario" (sólo
+   Códigos). Las contraseñas siempre se guardan con bcrypt, nunca en texto
+   plano, y nunca se devuelven en las respuestas.
+==================================== */
+function validarUsuarioPayload(body, { exigirPass }) {
+  const Nombre = (body.Nombre ?? "").toString().trim();
+  const User = (body.User ?? "").toString().trim();
+  const Rol = (body.Rol ?? "").toString().trim().toLowerCase();
+
+  if (!Nombre) return "El nombre es obligatorio";
+  if (!User) return "El usuario (login) es obligatorio";
+  if (Rol !== "admin" && Rol !== "usuario") return 'El rol debe ser "admin" o "usuario"';
+  if (exigirPass && !(body.Pass ?? "").toString().trim()) return "La contraseña es obligatoria";
+  return null;
+}
+
+// La tabla guarda el rol como "Admin"/"Usuario"; esto normaliza cualquier
+// variante de mayúsculas que llegue del formulario a ese mismo formato.
+function capitalizar(valor) {
+  const limpio = (valor || "").toString().trim().toLowerCase();
+  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+}
+
+// Nunca se expone la columna Pass al frontend.
+const SELECT_USUARIO_SEGURO = "id, Nombre, Tipodoc, Numdoc, User, Rol";
+
+app.get("/api/usuarios", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("Usuarios")
+      .select(SELECT_USUARIO_SEGURO)
+      .order("id", { ascending: true });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error al obtener usuarios:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/usuarios", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const errorValidacion = validarUsuarioPayload(req.body, { exigirPass: true });
+    if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
+    const { Nombre, Tipodoc, User, Pass, Rol } = req.body;
+    const Numdoc = req.body.Numdoc ? Number(req.body.Numdoc) : null;
+
+    const { data: existe, error: errorExiste } = await supabase
+      .from("Usuarios")
+      .select("id")
+      .eq("User", User);
+    if (errorExiste) throw errorExiste;
+    if (existe.length > 0) {
+      return res.status(409).json({ error: `El usuario "${User}" ya existe` });
+    }
+
+    const hash = await bcrypt.hash(Pass, 10);
+    const { data, error } = await supabase
+      .from("Usuarios")
+      .insert([{ Nombre, Tipodoc, Numdoc, User, Pass: hash, Rol: capitalizar(Rol) }])
+      .select(SELECT_USUARIO_SEGURO);
+
+    if (error) throw error;
+    res.json({ success: true, nuevo: data[0] });
+  } catch (err) {
+    console.error("❌ Error creando usuario:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+app.put("/api/usuarios/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const errorValidacion = validarUsuarioPayload(req.body, { exigirPass: false });
+    if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
+    const { id } = req.params;
+    const { Nombre, Tipodoc, User, Pass, Rol } = req.body;
+    const Numdoc = req.body.Numdoc ? Number(req.body.Numdoc) : null;
+
+    const { data: existe, error: errorExiste } = await supabase
+      .from("Usuarios")
+      .select("id, Rol")
+      .eq("id", id);
+    if (errorExiste) throw errorExiste;
+    if (existe.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const { data: duplicado, error: errorDup } = await supabase
+      .from("Usuarios")
+      .select("id")
+      .eq("User", User)
+      .neq("id", id);
+    if (errorDup) throw errorDup;
+    if (duplicado.length > 0) {
+      return res.status(409).json({ error: `El usuario "${User}" ya existe` });
+    }
+
+    // Nunca dejar el sistema sin ningún administrador (p. ej. al cambiarse
+    // uno mismo el rol por error).
+    const eraAdmin = (existe[0].Rol || "").toLowerCase() === "admin";
+    const seraAdmin = (Rol || "").toLowerCase() === "admin";
+    if (eraAdmin && !seraAdmin) {
+      const { data: admins, error: errorAdmins } = await supabase
+        .from("Usuarios")
+        .select("id")
+        .ilike("Rol", "admin");
+      if (errorAdmins) throw errorAdmins;
+      if (admins.length <= 1) {
+        return res.status(409).json({ error: "No puedes quitarle el rol admin al único administrador" });
+      }
+    }
+
+    const cambios = { Nombre, Tipodoc, Numdoc, User, Rol: capitalizar(Rol) };
+    if ((Pass ?? "").toString().trim()) {
+      cambios.Pass = await bcrypt.hash(Pass, 10);
+    }
+
+    const { data, error } = await supabase
+      .from("Usuarios")
+      .update(cambios)
+      .eq("id", id)
+      .select(SELECT_USUARIO_SEGURO);
+
+    if (error) throw error;
+    res.json({ success: true, actualizado: data[0] });
+  } catch (err) {
+    console.error("❌ Error actualizando usuario:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+app.delete("/api/usuarios/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: objetivo, error: errorObjetivo } = await supabase
+      .from("Usuarios")
+      .select("id, Rol")
+      .eq("id", id);
+    if (errorObjetivo) throw errorObjetivo;
+    if (objetivo.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // Nunca dejar el sistema sin ningún administrador.
+    if ((objetivo[0].Rol || "").toLowerCase() === "admin") {
+      const { data: admins, error: errorAdmins } = await supabase
+        .from("Usuarios")
+        .select("id")
+        .ilike("Rol", "admin");
+      if (errorAdmins) throw errorAdmins;
+      if (admins.length <= 1) {
+        return res.status(409).json({ error: "No puedes eliminar al único administrador" });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("Usuarios")
+      .delete()
+      .eq("id", id)
+      .select(SELECT_USUARIO_SEGURO);
+
+    if (error) throw error;
+    res.json({ success: true, eliminado: data[0] });
+  } catch (err) {
+    console.error("❌ Error eliminando usuario:", err.message);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
