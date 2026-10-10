@@ -276,8 +276,8 @@
             </div>
             <div class="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
                 <p class="text-xs text-gray-500">
-                    Primera fila con encabezados <code class="bg-gray-100 px-1 rounded">Nombre,Codigo,Docente,Encargado,Sede</code>
-                    (coma o tabulación). Sube un archivo .csv o pega el texto.
+                    Primera fila con encabezados <code class="bg-gray-100 px-1 rounded">Nombre;Codigo;Docente;Encargado;Sede</code>
+                    (separados por punto y coma — también acepta tabulación). Sube un archivo .csv o pega el texto.
                 </p>
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Archivo
@@ -288,20 +288,30 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">…o pega el
                         texto aquí</label>
-                    <textarea id="textoImportar" rows="6" placeholder="Nombre,Codigo,Docente,Encargado,Sede
-Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
+                    <textarea id="textoImportar" rows="6" placeholder="Nombre;Codigo;Docente;Encargado;Sede
+Juan Pérez;1234;Ana Gómez;María Pérez;TARDE"
                         class="input-custom w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-corporate-skyblue focus:border-transparent transition-all text-sm"></textarea>
                 </div>
-                <button type="button" onclick="previsualizarImportacion()"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-2 rounded-lg font-semibold transition-all">👁️
+                <button type="button" id="btnPrevisualizar" onclick="previsualizarImportacion()"
+                    class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-3 py-2 rounded-lg font-semibold transition-all">👁️
                     Previsualizar</button>
                 <div id="previewImportar" class="text-sm"></div>
+
+                <!-- Pantalla de carga con progreso real (una barra por cada lote enviado) -->
+                <div id="importProgreso" class="hidden">
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div id="importProgresoBarra"
+                            class="bg-corporate-blue h-3 rounded-full transition-all duration-200" style="width:0%">
+                        </div>
+                    </div>
+                    <p id="importProgresoTexto" class="text-xs text-gray-500 mt-1.5 text-center font-medium"></p>
+                </div>
             </div>
             <div class="flex gap-2 p-5 pt-0">
                 <button type="button" id="btnConfirmarImportar" disabled onclick="confirmarImportacion()"
                     class="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Importar</button>
-                <button type="button" onclick="cerrarModalImportar()"
-                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
+                <button type="button" id="btnCancelarImportar" onclick="cerrarModalImportar()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm">Cancelar</button>
             </div>
         </div>
     </div>
@@ -575,6 +585,8 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
             document.getElementById("textoImportar").value = "";
             document.getElementById("previewImportar").innerHTML = "";
             document.getElementById("btnConfirmarImportar").disabled = true;
+            document.getElementById("importProgreso").classList.add("hidden");
+            document.getElementById("importProgresoBarra").style.width = "0%";
             registrosParaImportar = null;
         }
 
@@ -760,9 +772,13 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
             if (codigosGlobal.length === 0) { alert("No hay registros para eliminar."); return; }
             const texto = prompt(
                 `Esto borrará los ${codigosGlobal.length} registros de la tabla Códigos y no se puede deshacer.\n` +
+                `Antes de borrar se descargará automáticamente una copia de seguridad en CSV.\n` +
                 `Escribe BORRAR para confirmar:`
             );
             if (texto !== "BORRAR") return;
+
+            // Copia de seguridad automática: se descarga SIEMPRE antes de borrar todo.
+            descargarCSV("backup_antes_de_borrar");
 
             const res = await fetch(`${API_BASE}/api/codigos`, {
                 method: "DELETE",
@@ -786,23 +802,25 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
            DESCARGAR CSV (todos los registros, no sólo
            lo que esté filtrado en pantalla)
         ────────────────────────────────────────── */
+        // ";" como delimitador (no ","): así Excel en español abre el CSV
+        // directamente en columnas, sin confundirlo con el separador decimal.
         function celdaCSV(valor) {
             const s = String(valor ?? "");
-            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
         }
 
-        function descargarCSV() {
+        function descargarCSV(prefijo) {
             if (codigosGlobal.length === 0) { alert("No hay registros para descargar."); return; }
             const columnas = ["Nombre", "Codigo", "Docente", "Encargado", "Sede"];
-            const filas = [columnas.join(",")];
+            const filas = [columnas.join(";")];
             codigosGlobal.forEach(c => {
-                filas.push(columnas.map(col => celdaCSV(c[col])).join(","));
+                filas.push(columnas.map(col => celdaCSV(c[col])).join(";"));
             });
             const blob = new Blob(["﻿" + filas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `codigos_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `${prefijo || "codigos"}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -816,7 +834,10 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
             const lineas = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim() !== "");
             if (lineas.length === 0) return { encabezados: [], filas: [] };
 
-            const delimitador = lineas[0].includes("\t") ? "\t" : ",";
+            // ";" es el delimitador esperado (igual que el CSV que exporta esta misma
+            // página); se acepta tabulación (pegado desde Excel) y "," sólo si el
+            // archivo no trae ningún ";" (compatibilidad con CSV más antiguos).
+            const delimitador = lineas[0].includes("\t") ? "\t" : (lineas[0].includes(";") ? ";" : ",");
 
             function parsearLinea(linea) {
                 const campos = [];
@@ -868,6 +889,36 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
             }));
         }
 
+        // Valida duplicados ANTES de importar nada: tanto dentro del propio
+        // archivo/texto pegado como contra lo que ya existe en la base de
+        // datos (codigosGlobal, ya cargado en memoria). Si hay algún código
+        // repetido en la misma sede, no se importa nada y se listan los
+        // errores exactos para corregir el archivo.
+        function validarDuplicadosImportacion(registros) {
+            const errores = [];
+            const vistosEnLote = new Map(); // "codigo||sede" -> primera fila donde apareció
+            const existentes = new Set(
+                codigosGlobal.map(c => `${c.Codigo}||${(c.Sede || '').trim().toLowerCase()}`)
+            );
+
+            registros.forEach((r, idx) => {
+                const numFila = idx + 1;
+                const clave = `${r.Codigo}||${(r.Sede || '').trim().toLowerCase()}`;
+
+                if (vistosEnLote.has(clave)) {
+                    errores.push({ fila: numFila, motivo: `Código ${r.Codigo} repetido con la fila ${vistosEnLote.get(clave)} (misma sede)` });
+                    return;
+                }
+                vistosEnLote.set(clave, numFila);
+
+                if (existentes.has(clave)) {
+                    errores.push({ fila: numFila, motivo: `Código ${r.Codigo} ya existe en la base de datos para esa sede` });
+                }
+            });
+
+            return errores;
+        }
+
         async function previsualizarImportacion() {
             const archivo = document.getElementById("archivoCSV").files[0];
             const texto = archivo ? await archivo.text() : document.getElementById("textoImportar").value;
@@ -876,14 +927,30 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
 
             try {
                 if (!texto || !texto.trim()) throw new Error("No hay contenido para importar (sube un archivo o pega texto).");
-                registrosParaImportar = construirRegistros(texto);
-                if (registrosParaImportar.length === 0) throw new Error("No se encontraron filas de datos.");
+                const registros = construirRegistros(texto);
+                if (registros.length === 0) throw new Error("No se encontraron filas de datos.");
 
+                const errorValidacion = registros.map((r, i) => ({ fila: i + 1, motivo: validarCodigoFila(r) })).find(e => e.motivo);
+                if (errorValidacion) throw new Error(`Fila ${errorValidacion.fila}: ${errorValidacion.motivo}`);
+
+                const erroresDuplicados = validarDuplicadosImportacion(registros);
+                if (erroresDuplicados.length > 0) {
+                    registrosParaImportar = null;
+                    preview.innerHTML = `
+                        <p class="text-corporate-red font-semibold mb-2">❌ Se encontraron códigos duplicados. No se importó nada:</p>
+                        <ul class="text-xs text-corporate-red list-disc pl-5 space-y-0.5">
+                            ${erroresDuplicados.map(e => `<li>Fila ${e.fila}: ${escapeHtml(e.motivo)}</li>`).join("")}
+                        </ul>`;
+                    btnConfirmar.disabled = true;
+                    return;
+                }
+
+                registrosParaImportar = registros;
                 const filasPreview = registrosParaImportar.slice(0, 5).map(r =>
                     `<tr class="border-t border-gray-100"><td class="px-2 py-1">${escapeHtml(r.Nombre)}</td><td class="px-2 py-1">${escapeHtml(r.Codigo)}</td><td class="px-2 py-1">${escapeHtml(r.Docente)}</td><td class="px-2 py-1">${escapeHtml(r.Encargado)}</td><td class="px-2 py-1">${escapeHtml(r.Sede)}</td></tr>`
                 ).join("");
                 preview.innerHTML = `
-                    <p class="text-green-700 font-medium mb-2">✅ ${registrosParaImportar.length} fila(s) detectadas. Vista previa (máx. 5):</p>
+                    <p class="text-green-700 font-medium mb-2">✅ ${registrosParaImportar.length} fila(s) válidas, sin duplicados. Vista previa (máx. 5):</p>
                     <div class="admin-table-wrapper rounded-lg overflow-x-auto">
                     <table class="w-full text-xs"><thead class="admin-table-head"><tr>
                         <th class="px-2 py-1.5 text-left">Nombre</th><th class="px-2 py-1.5 text-left">Código</th><th class="px-2 py-1.5 text-left">Docente</th><th class="px-2 py-1.5 text-left">Encargado</th><th class="px-2 py-1.5 text-left">Sede</th>
@@ -896,26 +963,81 @@ Juan Pérez,1234,Ana Gómez,María Pérez,TARDE"
             }
         }
 
+        function validarCodigoFila(r) {
+            if (!(r.Nombre || '').toString().trim()) return "el nombre es obligatorio";
+            if (!(r.Codigo || '').toString().trim()) return "el código es obligatorio";
+            return null;
+        }
+
+        // Sube los registros en lotes (en vez de uno solo gigante) para poder
+        // mostrar una barra de progreso real mientras se cargan, y para que
+        // una sola fila con problema no tire todo un archivo enorme.
+        const TAMANO_LOTE_IMPORTACION = 50;
+
+        function bloquearControlesImportacion(bloquear) {
+            document.getElementById("btnConfirmarImportar").disabled = bloquear;
+            document.getElementById("btnCancelarImportar").disabled = bloquear;
+            document.getElementById("btnPrevisualizar").disabled = bloquear;
+            document.getElementById("archivoCSV").disabled = bloquear;
+            document.getElementById("textoImportar").disabled = bloquear;
+        }
+
         async function confirmarImportacion() {
             if (!registrosParaImportar || registrosParaImportar.length === 0) return;
 
-            const res = await fetch(`${API_BASE}/api/codigos/import`, {
-                method: "POST",
-                headers: authHeaders(),
-                body: JSON.stringify({ registros: registrosParaImportar })
-            });
+            const total = registrosParaImportar.length;
+            let insertadosTotal = 0;
+            const omitidosTotal = [];
 
-            if (manejarRespuestaAuth(res)) return;
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                alert(data.error || "No se pudo importar.");
-                return;
+            bloquearControlesImportacion(true);
+            document.getElementById("previewImportar").innerHTML = "";
+            const progreso = document.getElementById("importProgreso");
+            const barra = document.getElementById("importProgresoBarra");
+            const texto = document.getElementById("importProgresoTexto");
+            progreso.classList.remove("hidden");
+            barra.style.width = "0%";
+            texto.textContent = `Importando 0/${total} registros...`;
+
+            for (let i = 0; i < total; i += TAMANO_LOTE_IMPORTACION) {
+                const lote = registrosParaImportar.slice(i, i + TAMANO_LOTE_IMPORTACION);
+                let data;
+                try {
+                    const res = await fetch(`${API_BASE}/api/codigos/import`, {
+                        method: "POST",
+                        headers: authHeaders(),
+                        body: JSON.stringify({ registros: lote })
+                    });
+                    if (manejarRespuestaAuth(res)) return;
+                    data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "No se pudo importar este lote.");
+                } catch (err) {
+                    progreso.classList.add("hidden");
+                    bloquearControlesImportacion(false);
+                    alert(
+                        `❌ Error durante la importación: ${err.message}\n\n` +
+                        `Se cargaron ${insertadosTotal} de ${total} registros antes del error.`
+                    );
+                    cargarCodigos();
+                    return;
+                }
+
+                insertadosTotal += data.insertados || 0;
+                (data.omitidos || []).forEach(o => omitidosTotal.push({ fila: i + o.fila, motivo: o.motivo }));
+
+                const procesados = Math.min(i + TAMANO_LOTE_IMPORTACION, total);
+                barra.style.width = Math.round((procesados / total) * 100) + "%";
+                texto.textContent = `Importando ${procesados}/${total} registros...`;
             }
 
-            let mensaje = `✅ Se importaron ${data.insertados} registro(s).`;
-            if (data.omitidos && data.omitidos.length) {
-                mensaje += `\n\n⚠️ ${data.omitidos.length} fila(s) omitida(s):\n` +
-                    data.omitidos.map(o => `Fila ${o.fila}: ${o.motivo}`).join("\n");
+            progreso.classList.add("hidden");
+            bloquearControlesImportacion(false);
+
+            let mensaje = insertadosTotal === total
+                ? `✅ Se cargaron correctamente los ${total} registros.`
+                : `⚠️ Se cargaron ${insertadosTotal} de ${total} registros.`;
+            if (omitidosTotal.length) {
+                mensaje += `\n\n${omitidosTotal.length} fila(s) no se pudieron insertar (posible código duplicado agregado justo en este momento):\n` +
+                    omitidosTotal.map(o => `Fila ${o.fila}: ${o.motivo}`).join("\n");
             }
             alert(mensaje);
 
